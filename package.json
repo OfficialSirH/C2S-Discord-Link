@@ -1,0 +1,41 @@
+{
+  "name": "userdata-api",
+  "version": "1.0.0",
+  "description": "RESTful userdata-api",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "npm i && tsc",
+    "start": "npm run build && pm2 start --name \"UserData-API\" dist/ecosystem.config.js",
+    "reload": "npm run build && pm2 reload dist/ecosystem.config.js",
+    "cleanup": "rm -rf dist",
+    "setup": "npm run lint:fix && npm run prettier",
+    "prettier": "prettier --write server.ts config.ts api/**/*.ts",
+    "test": "npm run lint && npm run build && npm run lint:typings",
+    "lint": "eslint --ext ts",
+    "lint:fix": "eslint --ext ts --fix",
+    "lint:typings": "eslint dist/api/index.d.ts",
+    "prepare": "husky install"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^16.11.7",
+    "@types/ws": "^8.2.0",
+    "@typescript-eslint/eslint-plugin": "^5.3.1",
+    "@typescript-eslint/parser": "^5.3.1",
+    "eslint": "^8.2.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^4.0.0",
+    "husky": "^7.0.4",
+    "lint-staged": "^11.2.6",
+    "nodemon": "^2.0.15",
+    "pm2": "^5.1.2",
+    "prettier": "^2.4.1"
+  },
+  "dependencies": {
+    "discord.js": "^13.3.1",
+    "dotenv": "^10.0.0",
+    "fastify": "^3.23.1",
+    "mongoose": "^6.0.12"
+  }
+}

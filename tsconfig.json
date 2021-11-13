@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+      "strict": false,
+      "moduleResolution": "node",
+      "declarationDir": "./dist",
+      "declaration": true,
+      "removeComments": false,
+      "alwaysStrict": true,
+      "pretty": true,
+      "module": "commonJS",
+      "target": "ESNext",
+      "sourceMap": false,
+      "skipDefaultLibCheck": true,
+      "outDir": "dist"
+    },
+    "watchOptions": {
+        "watchFile": "useFsEvents",
+        "watchDirectory": "useFsEvents",
+        "fallbackPolling": "dynamicPriority"
+    }
+  }
