@@ -1,5 +1,5 @@
-
+use std::{env};
 
 fn main() {
-    println!("Hello, world!");
+    let token = env::var("DISCORD_TOKEN").expect("Expected a token in the environment");
 }
