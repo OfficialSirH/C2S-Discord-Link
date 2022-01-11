@@ -7,4 +7,16 @@ edition = "2018"
 
 [dependencies]
 actix-web = "3"
-twilight-http = "0.7.1"
+twilight-http = "0.8"
+twilight-model = "0.8"
+tokio = { version = "1.15", features = ["macros", "rt-multi-thread"] }
+dotenv = "0.15"
+config = "0.11"
+hmac = "0.12"
+sha2 = "0.10"
+serde = "1"
+derive_more = "0.99.17"
+tokio-postgres = "0.7"
+deadpool-postgres = "0.10.1"
+tokio-pg-mapper = "0.2"
+tokio-pg-mapper-derive = "0.2"
