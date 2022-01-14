@@ -1,17 +1,17 @@
 [package]
 name = "discord_link_api_rewrite"
 version = "0.1.0"
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 actix-web = "3"
+simd-json = "0.4"
 twilight-http = "0.8"
 twilight-model = "0.8"
 tokio = { version = "1.15", features = ["macros", "rt-multi-thread"] }
 dotenv = "0.15"
-config = "0.11"
 hmac = "0.12"
 sha2 = "0.10"
 serde = "1"
