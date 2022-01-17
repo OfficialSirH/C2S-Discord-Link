@@ -29,7 +29,7 @@ pub async fn update_userdata(
         .query(
             &stmt,
             &[
-                &user_data.betaTester,
+                &user_data.beta_tester,
                 &user_data.metabits,
                 &user_data.dino_rank,
                 &user_data.prestige_rank,

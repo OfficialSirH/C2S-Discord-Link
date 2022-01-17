@@ -10,6 +10,8 @@ pub enum MyError {
     PGError(PGError),
     PGMError(PGMError),
     PoolError(PoolError),
+    #[display(fmt = "Request failed: {}", _0)]
+    Failure(String),
 }
 impl std::error::Error for MyError {}
 

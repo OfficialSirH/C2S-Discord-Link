@@ -3,13 +3,14 @@ use std::time::SystemTime;
 use tokio_pg_mapper_derive::PostgresMapper;
 
 #[derive(Deserialize, PostgresMapper, Serialize)]
-#[allow(non_snake_case)]
 #[pg_mapper(table = "UserData")]
 pub struct UserData {
-    pub discordId: String,
+    #[serde(rename = "discordId")]
+    pub discord_id: String,
     pub token: String,
-    pub betaTester: bool,
-    pub metabits: i64,
+    #[serde(rename = "betaTester")]
+    pub beta_tester: bool,
+    pub metabits: f64,
     pub dino_rank: i32,
     pub prestige_rank: i32,
     pub singularity_speedrun_time: f32,
@@ -19,10 +20,12 @@ pub struct UserData {
 }
 
 #[derive(Deserialize)]
-#[allow(non_snake_case)]
 pub struct ReceivedUserData {
-    pub betaTester: bool,
-    pub metabits: i64,
+    #[serde(rename = "playerToken")]
+    pub player_token: String,
+    #[serde(rename = "betaTester")]
+    pub beta_tester: bool,
+    pub metabits: f64,
     pub dino_rank: i32,
     pub prestige_rank: i32,
     pub singularity_speedrun_time: f32,
