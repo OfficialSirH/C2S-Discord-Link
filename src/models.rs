@@ -31,5 +31,4 @@ pub struct ReceivedUserData {
     pub singularity_speedrun_time: f32,
     pub all_sharks_obtained: bool,
     pub all_hidden_achievements_obtained: bool,
-    pub edited_timestamp: SystemTime,
 }

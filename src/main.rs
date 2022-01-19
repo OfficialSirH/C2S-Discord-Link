@@ -6,7 +6,7 @@ pub mod models;
 pub mod errors;
 pub mod db;
 
-use actix_web::{web, App, HttpServer};
+use actix_web::{web::{self, Data}, App, HttpServer};
 use deadpool_postgres::Runtime;
 use dotenv::dotenv;
 use handlers::update_user;
@@ -21,7 +21,7 @@ async fn main() -> std::io::Result<()> {
 
     let server = HttpServer::new(move || {
         App::new()
-            .data(pool.clone())
+            .app_data(Data::new(pool.clone()))
             .service(web::resource("/userdata").route(web::post().to(update_user)))
     })
     .bind(config.server_addr.clone())?

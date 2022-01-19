@@ -1,4 +1,4 @@
-use crate::{db, models::ReceivedUserData, role_handling::handle_roles, errors::MyError};
+use crate::{db, errors::MyError, models::ReceivedUserData, role_handling::handle_roles};
 use actix_web::{web, HttpResponse};
 use deadpool_postgres::{Client, Pool};
 use hmac::{Hmac, Mac};
@@ -6,16 +6,17 @@ use serde::{Deserialize, Serialize};
 use std::str::from_utf8;
 
 trait ConvertResultToHttpResponse<T> {
-    fn make_response(self: Self, response: &str) -> Result<T, MyError>;
+    fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError>;
 }
 
-impl<T, E> ConvertResultToHttpResponse<T> for Result<T, E> {
-    fn make_response(self: Self, response: &str) -> Result<T, MyError> {
+impl<T, E: std::fmt::Debug> ConvertResultToHttpResponse<T> for Result<T, E> {
+    fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError> {
         match self {
             Ok(data) => Ok(data),
-            Err(_) => Err(MyError::Failure(MessageResponse {
-                message: response.to_string(),
-            }.to_string())),
+            Err(error) => {
+                println!("{:?}", error);
+                Err(error_enum)
+            }
         }
     }
 }
@@ -23,11 +24,6 @@ impl<T, E> ConvertResultToHttpResponse<T> for Result<T, E> {
 #[derive(Serialize)]
 struct MessageResponse {
     message: String,
-}
-impl ToString for MessageResponse {
-    fn to_string(&self) -> String {
-        format!("{{ message: {} }}", self.message)
-    }
 }
 
 type HmacSha256 = Hmac<sha2::Sha256>;
@@ -45,21 +41,40 @@ pub async fn update_user(
 ) -> Result<HttpResponse, MyError> {
     let user_data: ReceivedUserData = received_user.into_inner();
 
-    let client: Client = db_pool.get().await.make_response("request failed at creating database client, please try again")?;
+    let client: Client = db_pool.get().await.make_response(MyError::InternalError(
+        "request failed at creating database client, please try again",
+    ))?;
     let config = crate::config::Config::new();
 
-    let mut mac = HmacSha256::new_from_slice(&config.userdata_auth.as_bytes()).make_response("request failed at token-creation process, please try again")?;
+    let mut mac = HmacSha256::new_from_slice(&config.userdata_auth.as_bytes()).make_response(
+        MyError::InternalError("request failed at token-creation process, please try again"),
+    )?;
     mac.update(query.player_id.as_bytes());
     mac.update(user_data.player_token.as_bytes());
 
     let user_token = mac.finalize().into_bytes();
-    let user_token = from_utf8(&user_token).make_response("request failed at token-creation process, please try again")?;
+    let user_token = from_utf8(&user_token.as_slice()).make_response(MyError::InternalError(
+        "request failed at token-creation process, please try again",
+    ))?;
 
-    db::get_userdata(&client, &user_token).await.make_response("Failed at retrieving existing data, you may not have your account linked yet")?;
+    db::get_userdata(&client, &user_token)
+        .await
+        .make_response(MyError::InternalError(
+            "Failed at retrieving existing data, you may not have your account linked yet",
+        ))?;
 
-    let updated_data = db::update_userdata(&client, &user_token, user_data).await.make_response("The request has unfortunately failed the update")?;
+    let updated_data = db::update_userdata(&client, &user_token, user_data)
+        .await
+        .make_response(MyError::InternalError(
+            "The request has unfortunately failed the update",
+        ))?;
 
-    let gained_roles = handle_roles(updated_data, config).await.make_response("The role handling process has failed")?;
+    let gained_roles =
+        handle_roles(updated_data, config)
+            .await
+            .make_response(MyError::InternalError(
+                "The role handling process has failed",
+            ))?;
     let roles = format!(
         "The request was successful, you've gained the following roles: {}",
         gained_roles.join(", ")
