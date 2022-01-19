@@ -32,3 +32,8 @@ pub struct ReceivedUserData {
     pub all_sharks_obtained: bool,
     pub all_hidden_achievements_obtained: bool,
 }
+
+#[derive(Serialize)]
+pub struct MessageResponse {
+    pub message: String,
+}

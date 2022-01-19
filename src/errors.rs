@@ -4,6 +4,8 @@ use derive_more::Display;
 use tokio_pg_mapper::Error as PGMError;
 use tokio_postgres::error::Error as PGError;
 
+use crate::models::MessageResponse;
+
 #[derive(Display, Debug)]
 pub enum MyError {
     NotFound,
@@ -23,7 +25,9 @@ impl ResponseError for MyError {
     fn error_response(&self) -> HttpResponse {
         HttpResponseBuilder::new(self.status_code())
             .insert_header(header::ContentType::json())
-            .body(format!("{{ \"message\": {} }}", self.to_string()))
+            .json(MessageResponse {
+                message: self.to_string()
+            })
     }
 
     fn status_code(&self) -> StatusCode {

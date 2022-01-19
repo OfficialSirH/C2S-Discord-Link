@@ -1,15 +1,15 @@
-use crate::{db, errors::MyError, models::ReceivedUserData, role_handling::handle_roles};
+use crate::{db, errors::MyError, models::{ReceivedUserData, MessageResponse}, role_handling::handle_roles};
 use actix_web::{web, HttpResponse};
 use deadpool_postgres::{Client, Pool};
 use hmac::{Hmac, Mac};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::str::from_utf8;
 
-trait ConvertResultToHttpResponse<T> {
+trait ConvertResultErrorToMyError<T> {
     fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError>;
 }
 
-impl<T, E: std::fmt::Debug> ConvertResultToHttpResponse<T> for Result<T, E> {
+impl<T, E: std::fmt::Debug> ConvertResultErrorToMyError<T> for Result<T, E> {
     fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError> {
         match self {
             Ok(data) => Ok(data),
@@ -19,11 +19,6 @@ impl<T, E: std::fmt::Debug> ConvertResultToHttpResponse<T> for Result<T, E> {
             }
         }
     }
-}
-
-#[derive(Serialize)]
-struct MessageResponse {
-    message: String,
 }
 
 type HmacSha256 = Hmac<sha2::Sha256>;
