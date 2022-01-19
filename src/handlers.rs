@@ -47,14 +47,14 @@ pub async fn update_user(
     let config = crate::config::Config::new();
 
     let mut mac = HmacSha256::new_from_slice(&config.userdata_auth.as_bytes()).make_response(
-        MyError::InternalError("request failed at token-creation process, please try again"),
+        MyError::InternalError("request failed at the token-creation process, please try again"),
     )?;
     mac.update(query.player_id.as_bytes());
     mac.update(user_data.player_token.as_bytes());
 
     let user_token = mac.finalize().into_bytes();
     let user_token = from_utf8(&user_token.as_slice()).make_response(MyError::InternalError(
-        "request failed at token-creation process, please try again",
+        "request failed at the token-creation process, please try again",
     ))?;
 
     db::get_userdata(&client, &user_token)
@@ -73,7 +73,7 @@ pub async fn update_user(
         handle_roles(updated_data, config)
             .await
             .make_response(MyError::InternalError(
-                "The role handling process has failed",
+                "The role-handling process has failed",
             ))?;
     let roles = format!(
         "The request was successful, you've gained the following roles: {}",
