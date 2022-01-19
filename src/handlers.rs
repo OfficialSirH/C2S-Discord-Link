@@ -1,9 +1,13 @@
-use crate::{db, errors::MyError, models::{ReceivedUserData, MessageResponse}, role_handling::handle_roles};
+use crate::{
+    db,
+    errors::MyError,
+    models::{MessageResponse, ReceivedUserData},
+    role_handling::handle_roles,
+};
 use actix_web::{web, HttpResponse};
 use deadpool_postgres::{Client, Pool};
 use hmac::{Hmac, Mac};
 use serde::Deserialize;
-use std::str::from_utf8;
 
 trait ConvertResultErrorToMyError<T> {
     fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError>;
@@ -47,10 +51,14 @@ pub async fn update_user(
     mac.update(query.player_id.as_bytes());
     mac.update(user_data.player_token.as_bytes());
 
-    let user_token = mac.finalize().into_bytes();
-    let user_token = from_utf8(&user_token.as_slice()).make_response(MyError::InternalError(
-        "request failed at the token-creation process, please try again",
-    ))?;
+    let user_token = mac
+        .finalize()
+        .into_bytes()
+        .as_slice()
+        .iter()
+        .map(|byte| format!("{:02x?}", byte))
+        .collect::<Vec<String>>()
+        .join("");
 
     db::get_userdata(&client, &user_token)
         .await
