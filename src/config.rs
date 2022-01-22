@@ -3,6 +3,8 @@ use dotenv::vars;
 #[derive(Debug)]
 pub struct Config {
     pub discord_token: String,
+    pub webhook_id: String,
+    pub webhook_token: String,
     pub userdata_auth: String,
     pub server_addr: String,
     pub pg: deadpool_postgres::Config,
@@ -14,6 +16,8 @@ impl Config {
         Config::setup_pg_config(&mut database_config, &environment_vars);
         Config {
             discord_token: find_key(&environment_vars, "DISCORD_TOKEN"),
+            webhook_id: find_key(&environment_vars, "WEBHOOK_ID"),
+            webhook_token: find_key(&environment_vars, "WEBHOOK_TOKEN"),
             userdata_auth: find_key(&environment_vars, "USERDATA_AUTH"),
             server_addr: find_key(&environment_vars, "SERVER_ADDR"),
             pg: database_config,

@@ -5,11 +5,13 @@ pub mod constants;
 pub mod models;
 pub mod errors;
 pub mod db;
+pub mod webhook_logging;
 
 use actix_web::{web::{self, Data}, App, HttpServer};
 use deadpool_postgres::Runtime;
 use dotenv::dotenv;
 use handlers::update_user;
+use webhook_logging::webhook_log;
 use tokio_postgres::NoTls;
 
 #[actix_web::main]
@@ -26,6 +28,7 @@ async fn main() -> std::io::Result<()> {
     })
     .bind(config.server_addr.clone())?
     .run();
+    webhook_log(format!("Server running at http://{}/", config.server_addr), constants::LOG::SUCCESSFUL).await.unwrap();
     println!("Server running at http://{}/", config.server_addr);
 
     server.await

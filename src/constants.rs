@@ -43,3 +43,14 @@ pub mod persistent_roles {
 }
 
 pub const C2SGUILD: u64 = 488_478_892_873_744_385;
+
+pub enum LOG {
+  SUCCESSFUL,
+  INFORMATIONAL,
+  FAILURE,
+}
+
+pub const BACKGROUND: &'static str = "\u{001b}[40m";
+pub const SUCCESSFUL: &'static str = "\u{001b}[0;32m";
+pub const INFORMATIONAL: &'static str = "\u{001b}[1;33m";
+pub const FAILURE: &'static str = "\u{001b}[0;31m";
