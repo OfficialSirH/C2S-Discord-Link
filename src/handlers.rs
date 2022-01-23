@@ -6,8 +6,8 @@ use crate::{
 };
 use actix_web::{web, HttpResponse};
 use deadpool_postgres::{Client, Pool};
-use hmac::{Hmac, Mac};
 use serde::Deserialize;
+use crypto::{sha1::Sha1, hmac::Hmac, mac::Mac};
 
 trait ConvertResultErrorToMyError<T> {
     fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError>;
@@ -24,8 +24,6 @@ impl<T, E: std::fmt::Debug> ConvertResultErrorToMyError<T> for Result<T, E> {
         }
     }
 }
-
-type HmacSha256 = Hmac<sha2::Sha256>;
 
 #[derive(Deserialize)]
 pub struct PlayerData {
@@ -45,16 +43,13 @@ pub async fn update_user(
     ))?;
     let config = crate::config::Config::new();
 
-    let mut mac = HmacSha256::new_from_slice(&config.userdata_auth.as_bytes()).make_response(
-        MyError::InternalError("request failed at the token-creation process, please try again"),
-    )?;
-    mac.update(query.player_id.as_bytes());
-    mac.update(user_data.player_token.as_bytes());
+    let mut user_token = Hmac::new(Sha1::new(), &config.userdata_auth.as_bytes());
+    user_token.input(query.player_id.as_bytes());
+    user_token.input(user_data.player_token.as_bytes());
 
-    let user_token = mac
-        .finalize()
-        .into_bytes()
-        .as_slice()
+    let user_token = user_token
+        .result()
+        .code()
         .iter()
         .map(|byte| format!("{:02x?}", byte))
         .collect::<Vec<String>>()

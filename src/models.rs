@@ -5,10 +5,8 @@ use tokio_pg_mapper_derive::PostgresMapper;
 #[derive(Deserialize, PostgresMapper, Serialize)]
 #[pg_mapper(table = "UserData")]
 pub struct UserData {
-    #[serde(rename = "discordId")]
     pub discord_id: String,
     pub token: String,
-    #[serde(rename = "betaTester")]
     pub beta_tester: bool,
     pub metabits: f64,
     pub dino_rank: i32,

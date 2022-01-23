@@ -1,5 +1,5 @@
 UPDATE "UserData"
-SET "betaTester" = $1,
+SET "beta_tester" = $1,
     "metabits" = $2,
     "dino_rank" = $3,
     "prestige_rank" = $4,

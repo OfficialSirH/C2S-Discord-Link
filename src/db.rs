@@ -4,16 +4,16 @@ use tokio_pg_mapper::{Error, FromTokioPostgresRow};
 
 pub async fn get_userdata(client: &Client, token: &str) -> Result<UserData, Error> {
     let _stmt = include_str!("../sql/get_userdata.sql");
-    let _stmt = _stmt.replace("$token", &token);
+    let _stmt = _stmt.replace("$token", format!("'{}'", &token).as_str());
     let stmt = client.prepare(&_stmt).await?;
 
     let queried_data = client
         .query(&stmt, &[])
         .await?
         .pop()
-        .ok_or(Error::ColumnNotFound);
+        .ok_or(Error::ColumnNotFound)?;
 
-    UserData::from_row_ref(&queried_data?)
+    UserData::from_row_ref(&queried_data)
 }
 
 pub async fn update_userdata(
@@ -22,7 +22,7 @@ pub async fn update_userdata(
     user_data: ReceivedUserData,
 ) -> Result<UserData, Error> {
     let _stmt = include_str!("../sql/update_userdata.sql");
-    let _stmt = _stmt.replace("$token", &token);
+    let _stmt = _stmt.replace("$token", format!("'{}'", &token).as_str());
     let stmt = client.prepare(&_stmt).await?;
 
     let queried_data = client
