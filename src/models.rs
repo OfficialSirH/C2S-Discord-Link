@@ -8,10 +8,10 @@ pub struct UserData {
     pub discord_id: String,
     pub token: String,
     pub beta_tester: bool,
-    pub metabits: f64,
+    pub metabits: i64,
     pub dino_rank: i32,
     pub prestige_rank: i32,
-    pub singularity_speedrun_time: f32,
+    pub singularity_speedrun_time: f64,
     pub all_sharks_obtained: bool,
     pub all_hidden_achievements_obtained: bool,
     pub edited_timestamp: SystemTime,
@@ -26,7 +26,19 @@ pub struct ReceivedUserData {
     pub metabits: f64,
     pub dino_rank: i32,
     pub prestige_rank: i32,
-    pub singularity_speedrun_time: f32,
+    pub singularity_speedrun_time: f64,
+    pub all_sharks_obtained: bool,
+    pub all_hidden_achievements_obtained: bool,
+}
+
+#[derive(Deserialize)]
+pub struct DataTypeAccurateUserData {
+    pub player_token: String,
+    pub beta_tester: bool,
+    pub metabits: i64,
+    pub dino_rank: i32,
+    pub prestige_rank: i32,
+    pub singularity_speedrun_time: f64,
     pub all_sharks_obtained: bool,
     pub all_hidden_achievements_obtained: bool,
 }

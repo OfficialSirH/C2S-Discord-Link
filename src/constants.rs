@@ -44,6 +44,34 @@ pub mod persistent_roles {
 
 pub const C2SGUILD: u64 = 488_478_892_873_744_385;
 
+// pub mod requirements {
+//   pub const REALITY_LEGEND: i64 = 100_000_000_000_000;
+//   pub const REALITY_EXPERT: i64 = 1_000_000_000;
+//   pub const REALITY_EXPLORER: i64 = 1_000_000;
+// }
+
+pub enum MetabitRequirements {
+  RealityLegend = 100_000_000_000_000,
+  RealityExpert = 1_000_000_000,
+  RealityExplorer = 1_000_000,
+}
+
+pub enum PaleoRequirements {
+  // prestige
+  PaleontologistLegend = 10,
+  // prestige
+  ProgressivePaleontologist = 1,
+  // dino ranks
+  Paleontologist = 26,
+}
+
+pub enum SimulationRequirements {
+  // seconds
+  SonicSpeedsterOfSimulations = 120,
+  // seconds
+  SimulationSpeedster = 300,
+}
+
 pub enum LOG {
   SUCCESSFUL,
   INFORMATIONAL,
