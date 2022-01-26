@@ -72,6 +72,11 @@ pub enum SimulationRequirements {
   SimulationSpeedster = 300,
 }
 
+pub enum ErrorLogType {
+  USER(String),
+  INTERNAL
+}
+
 pub enum LOG {
   SUCCESSFUL,
   INFORMATIONAL,

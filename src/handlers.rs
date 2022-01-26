@@ -1,16 +1,24 @@
 use crate::{
+    constants::{LOG, ErrorLogType},
     db,
     errors::MyError,
-    models::{MessageResponse, ReceivedUserData, DataTypeAccurateUserData},
+    models::{DataTypeAccurateUserData, MessageResponse, ReceivedUserData},
     role_handling::handle_roles,
+    webhook_logging::webhook_log,
 };
 use actix_web::{web, HttpResponse};
+use async_trait::async_trait;
+use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
 use serde::Deserialize;
-use crypto::{sha1::Sha1, hmac::Hmac, mac::Mac};
 
 trait ConvertResultErrorToMyError<T> {
     fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError>;
+}
+
+#[async_trait]
+trait LogMyError<T> {
+    async fn make_log(self: Self, error_type: ErrorLogType) -> Result<T, MyError>;
 }
 
 impl<T, E: std::fmt::Debug> ConvertResultErrorToMyError<T> for Result<T, E> {
@@ -21,6 +29,24 @@ impl<T, E: std::fmt::Debug> ConvertResultErrorToMyError<T> for Result<T, E> {
                 println!("{:?}", error);
                 Err(error_enum)
             }
+        }
+    }
+}
+
+#[async_trait]
+impl<T: std::marker::Send> LogMyError<T> for Result<T, MyError> {
+    async fn make_log(self: Self, error_type: ErrorLogType) -> Result<T, MyError> {
+        match self {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                let error_content = match error_type {
+                    ErrorLogType::USER(token) => format!("Error with a user\n\ntoken: {}\n\n{}", token, error.to_string()),
+                    ErrorLogType::INTERNAL => error.to_string(),
+                };
+                match webhook_log(error_content, LOG::FAILURE).await {
+                    _ => return Err(error),
+                };
+            },
         }
     }
 }
@@ -50,7 +76,7 @@ pub async fn update_user(
 
     let client: Client = db_pool.get().await.make_response(MyError::InternalError(
         "request failed at creating database client, please try again",
-    ))?;
+    )).make_log(ErrorLogType::INTERNAL).await?;
     let config = crate::config::Config::new();
 
     let mut user_token = Hmac::new(Sha1::new(), &config.userdata_auth.as_bytes());
@@ -69,24 +95,28 @@ pub async fn update_user(
         .await
         .make_response(MyError::InternalError(
             "Failed at retrieving existing data, you may not have your account linked yet",
-        ))?;
+        )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
 
     let updated_data = db::update_userdata(&client, &user_token, user_data)
         .await
         .make_response(MyError::InternalError(
             "The request has unfortunately failed the update",
-        ))?;
+        )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
 
     let gained_roles =
         handle_roles(updated_data, config)
             .await
             .make_response(MyError::InternalError(
                 "The role-handling process has failed",
-            ))?;
+            )).make_log(ErrorLogType::USER(user_token)).await?;
     let roles = format!(
         "The request was successful, you've gained the following roles: {}",
         gained_roles.join(", ")
     );
 
+    match webhook_log(roles.to_string(), LOG::INFORMATIONAL).await {
+        Ok(value) => value,
+        Err(_) => return Ok(HttpResponse::Ok().json(MessageResponse { message: roles })),
+    };
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
