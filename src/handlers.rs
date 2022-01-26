@@ -104,17 +104,21 @@ pub async fn update_user(
         )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
 
     let gained_roles =
-        handle_roles(updated_data, config)
+        handle_roles(&updated_data, config)
             .await
             .make_response(MyError::InternalError(
                 "The role-handling process has failed",
             )).make_log(ErrorLogType::USER(user_token)).await?;
-    let roles = format!(
-        "The request was successful, you've gained the following roles: {}",
-        gained_roles.join(", ")
-    );
+    let roles = if gained_roles.join(", ").is_empty() {
+        "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
+    } else {
+        format!(
+            "The request was successful, you've gained the following roles: {}",
+            gained_roles.join(", ")
+        )
+    };
 
-    match webhook_log(roles.to_string(), LOG::INFORMATIONAL).await {
+    match webhook_log(format!("user with ID {} gained the following roles: {}", updated_data.discord_id, gained_roles.join(", ")), LOG::INFORMATIONAL).await {
         Ok(value) => value,
         Err(_) => return Ok(HttpResponse::Ok().json(MessageResponse { message: roles })),
     };

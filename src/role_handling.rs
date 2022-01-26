@@ -19,7 +19,7 @@ impl GetSomeFromRoleId for Option<RoleId> {
   }
 }
 
-pub async fn handle_roles(user_data: UserData, config: Config) -> Result<Vec<&'static str>, MyError> {
+pub async fn handle_roles(user_data: &UserData, config: Config) -> Result<Vec<&'static str>, MyError> {
   let mut gained_roles: Vec<&'static str> = Vec::new();
   let client = Client::new(config.discord_token);
   let guild_id = GuildId::new(C2SGUILD).ok_or(MyError::InternalError("failed GuildId struct"))?;
