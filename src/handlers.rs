@@ -118,7 +118,13 @@ pub async fn update_user(
         )
     };
 
-    match webhook_log(format!("user with ID {} gained the following roles: {}", updated_data.discord_id, gained_roles.join(", ")), LOG::INFORMATIONAL).await {
+    let logged_roles = if gained_roles.join(", ").is_empty() {
+        format!("user with ID {} had a successful request but gained no roles", updated_data.discord_id)
+    } else {
+        format!("user with ID {} gained the following roles: {}", updated_data.discord_id, gained_roles.join(", "))
+    };
+
+    match webhook_log(logged_roles, LOG::INFORMATIONAL).await {
         Ok(value) => value,
         Err(_) => return Ok(HttpResponse::Ok().json(MessageResponse { message: roles })),
     };
