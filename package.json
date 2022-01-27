@@ -1,5 +1,6 @@
 {
   "scripts": {
-    "start": "pm2 start target/release/discord-link.exe --name \"Discord-Link\" --watch"
+    "start": "pm2 start ./discord-link.exe --name \"Discord-Link\"",
+    "reload": "pm2 reload ./discord-link.exe --name \"Discord-Link\""
   }
 }
