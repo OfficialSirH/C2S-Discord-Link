@@ -1,11 +1,11 @@
-# RESTful-C2SUserData
-A repository for storing the REST API for C2S UserData
+# C2S-Discord-Link
+the REST API for handling C2S UserData in Cell to Singularity
 
 ## Prerequisites 
 * ### Base URL
-`https://IP:3000/userdata`
+`http://127.0.0.1:3000/userdata`
 * ### Authorization
-`process.env.USERDATA_AUTH`
+`USERDATA_AUTH`
 * ### UserData Definition
 ```ts
 interface UserData {
@@ -22,40 +22,7 @@ interface UserData {
 }
 ```
 
-## PATH - `/`
-* ### **GET** list all entries
-Response -
-```js
-UserData[]
-```
-* ### **POST** create entry
-Body -
-```js
-{
-  discordId: String,
-  playerId: String,
-  playerToken: String,
-  metabits: Number
-}
-```
-Response - 
-```js
-UserData
-```
-
-## PATH - `/{playerId}`
-* ### **GET** list entry
-Body -
-```js
-{
-  playerToken: String
-}
-```
-Response - 
-```js
-UserData
-```
-* ### **POST** update entry
+* ### **POST** `?playerId={playerId}` update entry
 Body - 
 ```js
 {
@@ -66,18 +33,4 @@ Body -
 Response -
 ```js
 UserData
-```
-* ### **DELETE** delete entry
-Body - 
-```js
-{
-  playerToken: String
-}
-```
-Response -
-```js
-{
-  message: 'User Data successfully deleted',
-  discordId: String
-}
 ```

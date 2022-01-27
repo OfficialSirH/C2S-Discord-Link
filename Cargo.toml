@@ -1,5 +1,5 @@
 [package]
-name = "discord_link_api_rewrite"
+name = "discord-link"
 version = "0.1.0"
 edition = "2021"
 
