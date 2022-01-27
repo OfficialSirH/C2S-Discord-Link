@@ -1,0 +1,5 @@
+{
+  "scripts": {
+    "start": "pm2 start target/release/discord-link.exe --name \"Discord-Link\" --watch"
+  }
+}
