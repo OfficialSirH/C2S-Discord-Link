@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "pm2 start ./discord-link.exe --name \"Discord-Link\"",
-    "reload": "pm2 reload ./discord-link.exe --name \"Discord-Link\""
+    "start": "chmod u+x discord-link.exe && pm2 start ./discord-link.exe --name \"Discord-Link\"",
+    "reload": "chmod u+x discord-link.exe && pm2 reload ./discord-link.exe --name \"Discord-Link\""
   }
 }
