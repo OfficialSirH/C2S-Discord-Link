@@ -122,11 +122,16 @@ fn handle_simulation_roles(gained_roles: &mut Vec<&'static str>, member: &Member
   }
 
   else {
-    if user_data.singularity_speedrun_time <= SimulationRequirements::SonicSpeedsterOfSimulations as i32 as f64 {
+    let speedrun_time = if user_data.singularity_speedrun_time.is_some() {
+      user_data.singularity_speedrun_time.unwrap()
+    } else {
+      1000.0
+    };
+    if speedrun_time <= SimulationRequirements::SonicSpeedsterOfSimulations as i32 as f64 {
       applyable_roles.push(apply_a_role(gained_roles, member, roles::SONIC_SPEEDSTER_OF_SIMULATIONS, "Sonic Speedster of Simulations"));
     }
 
-    else if user_data.singularity_speedrun_time <= SimulationRequirements::SimulationSpeedster as i32 as f64 {
+    else if speedrun_time <= SimulationRequirements::SimulationSpeedster as i32 as f64 {
       applyable_roles.push(apply_a_role(gained_roles, member, roles::SIMULATION_SPEEDSTER, "Simulation Speedster"));
     }
 

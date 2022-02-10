@@ -6,6 +6,7 @@ pub mod roles {
   pub const REALITY_LEGEND: u64 = 892_353_216_094_814_268;
   pub const PROGRESSIVE_PALEONTOLOGIST: u64 = 892_353_322_026_160_138;
   pub const REALITY_EXPERT: u64 = 892_353_419_409_518_604;
+  pub const PLANETARY_EXPLORER: u64 = 922_176_303_153_696_768;
   pub const PALEONTOLOGIST: u64 = 657_305_968_442_474_502;
   pub const SIMULATION_SPEEDSTER: u64 = 892_355_042_865_192_980;
   pub const REALITY_EXPLORER: u64 = 499_316_778_426_433_538;
@@ -70,6 +71,11 @@ pub enum SimulationRequirements {
   SonicSpeedsterOfSimulations = 120,
   // seconds
   SimulationSpeedster = 300,
+}
+
+pub enum BeyondRequirements {
+  // beyond ranks
+  PlanetaryExplorer = 15,
 }
 
 pub enum ErrorLogType {

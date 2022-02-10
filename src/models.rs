@@ -11,7 +11,7 @@ pub struct UserData {
     pub metabits: i64,
     pub dino_rank: i32,
     pub prestige_rank: i32,
-    pub singularity_speedrun_time: f64,
+    pub singularity_speedrun_time: Option<f64>,
     pub all_sharks_obtained: bool,
     pub all_hidden_achievements_obtained: bool,
     pub edited_timestamp: SystemTime,
@@ -26,7 +26,7 @@ pub struct ReceivedUserData {
     pub metabits: f64,
     pub dino_rank: i32,
     pub prestige_rank: i32,
-    pub singularity_speedrun_time: f64,
+    pub singularity_speedrun_time: Option<f64>,
     pub all_sharks_obtained: bool,
     pub all_hidden_achievements_obtained: bool,
 }
@@ -38,7 +38,7 @@ pub struct DataTypeAccurateUserData {
     pub metabits: i64,
     pub dino_rank: i32,
     pub prestige_rank: i32,
-    pub singularity_speedrun_time: f64,
+    pub singularity_speedrun_time: Option<f64>,
     pub all_sharks_obtained: bool,
     pub all_hidden_achievements_obtained: bool,
 }
