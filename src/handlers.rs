@@ -69,6 +69,7 @@ pub async fn update_user(
         metabits: user_data.metabits as i64,
         dino_rank: user_data.dino_rank,
         prestige_rank: user_data.prestige_rank,
+        beyond_rank: user_data.beyond_rank,
         singularity_speedrun_time: user_data.singularity_speedrun_time,
         all_sharks_obtained: user_data.all_sharks_obtained,
         all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,

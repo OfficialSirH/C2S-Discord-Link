@@ -1,7 +1,7 @@
 use crate::errors::MyError;
 use crate::config::Config;
 use crate::models::UserData;
-use crate::constants::{roles, persistent_roles, C2SGUILD, MetabitRequirements, PaleoRequirements, SimulationRequirements};
+use crate::constants::{roles, persistent_roles, C2SGUILD, MetabitRequirements, PaleoRequirements, SimulationRequirements, BeyondRequirements};
 use twilight_http::Client;
 use twilight_model::id::RoleId;
 use twilight_model::{id::{GuildId, UserId},guild::Member};
@@ -43,6 +43,7 @@ pub async fn handle_roles(user_data: &UserData, config: Config) -> Result<Vec<&'
 
   let mut gained_metabit_roles = handle_metabit_roles(&mut gained_roles, &member_data, &user_data);
   let mut gained_paleo_roles = handle_paleo_roles(&mut gained_roles, &member_data, &user_data);
+  let mut gained_beyond_roles = handle_beyond_roles(&mut gained_roles, &member_data, &user_data);
   let mut gained_simulation_roles = handle_simulation_roles(&mut gained_roles, &member_data, &user_data);
 
   let mut applyable_roles = persistent_roles::PERSISTENT_ROLES
@@ -53,6 +54,7 @@ pub async fn handle_roles(user_data: &UserData, config: Config) -> Result<Vec<&'
 
   applyable_roles.append(&mut gained_metabit_roles);
   applyable_roles.append(&mut gained_paleo_roles);
+  applyable_roles.append(&mut gained_beyond_roles);
   applyable_roles.append(&mut gained_simulation_roles);
   
   let updated_member_data = match client.update_guild_member(guild_id, user_id)
@@ -109,6 +111,17 @@ fn handle_paleo_roles(gained_roles: &mut Vec<&'static str>, member: &Member, use
   }
 
 
+
+  return applyable_roles;
+}
+
+fn handle_beyond_roles(gained_roles: &mut Vec<&'static str>, member: &Member, user_data: &UserData) -> Vec<RoleId> {
+  // the length of the vector will always be 1 to simplify the process of combining the roles array
+  let mut applyable_roles: Vec<RoleId> = Vec::new();
+  
+  if user_data.beyond_rank == BeyondRequirements::PlanetaryExplorer as i32 {
+    applyable_roles.push(apply_a_role(gained_roles, member, roles::PLANETARY_EXPLORER, "Planetary Explorer"));
+  }
 
   return applyable_roles;
 }
