@@ -13,16 +13,16 @@ use deadpool_postgres::{Client, Pool};
 use serde::Deserialize;
 
 trait ConvertResultErrorToMyError<T> {
-    fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError>;
+    fn make_response(self, error_enum: MyError) -> Result<T, MyError>;
 }
 
 #[async_trait]
 trait LogMyError<T> {
-    async fn make_log(self: Self, error_type: ErrorLogType) -> Result<T, MyError>;
+    async fn make_log(self, error_type: ErrorLogType) -> Result<T, MyError>;
 }
 
 impl<T, E: std::fmt::Debug> ConvertResultErrorToMyError<T> for Result<T, E> {
-    fn make_response(self: Self, error_enum: MyError) -> Result<T, MyError> {
+    fn make_response(self, error_enum: MyError) -> Result<T, MyError> {
         match self {
             Ok(data) => Ok(data),
             Err(error) => {
@@ -35,7 +35,7 @@ impl<T, E: std::fmt::Debug> ConvertResultErrorToMyError<T> for Result<T, E> {
 
 #[async_trait]
 impl<T: std::marker::Send> LogMyError<T> for Result<T, MyError> {
-    async fn make_log(self: Self, error_type: ErrorLogType) -> Result<T, MyError> {
+    async fn make_log(self, error_type: ErrorLogType) -> Result<T, MyError> {
         match self {
             Ok(value) => Ok(value),
             Err(error) => {
@@ -43,9 +43,8 @@ impl<T: std::marker::Send> LogMyError<T> for Result<T, MyError> {
                     ErrorLogType::USER(token) => format!("Error with a user\n\ntoken: {}\n\n{}", token, error.to_string()),
                     ErrorLogType::INTERNAL => error.to_string(),
                 };
-                match webhook_log(error_content, LOG::FAILURE).await {
-                    _ => return Err(error),
-                };
+                webhook_log(error_content, LOG::FAILURE).await.unwrap_or(());
+                return Err(error);
             },
         }
     }
@@ -80,7 +79,7 @@ pub async fn update_user(
     )).make_log(ErrorLogType::INTERNAL).await?;
     let config = crate::config::Config::new();
 
-    let mut user_token = Hmac::new(Sha1::new(), &config.userdata_auth.as_bytes());
+    let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
     user_token.input(query.player_id.as_bytes());
     user_token.input(user_data.player_token.as_bytes());
 

@@ -7,11 +7,11 @@ use twilight_model::id::RoleId;
 use twilight_model::{id::{GuildId, UserId},guild::Member};
 
 trait GetSomeFromRoleId {
-  fn get_some(self: Self) -> RoleId;
+  fn get_some(self) -> RoleId;
 }
 
 impl GetSomeFromRoleId for Option<RoleId> {
-  fn get_some(self: Self) -> RoleId {
+  fn get_some(self) -> RoleId {
       match self {
         Some(role_id) => role_id,
         None => unreachable!()
@@ -41,10 +41,10 @@ pub async fn handle_roles(user_data: &UserData, config: Config) -> Result<Vec<&'
     Err(_) => return Err(MyError::InternalError("failed at parsing the member data to a Member struct")),
   };
 
-  let mut gained_metabit_roles = handle_metabit_roles(&mut gained_roles, &member_data, &user_data);
-  let mut gained_paleo_roles = handle_paleo_roles(&mut gained_roles, &member_data, &user_data);
-  let mut gained_beyond_roles = handle_beyond_roles(&mut gained_roles, &member_data, &user_data);
-  let mut gained_simulation_roles = handle_simulation_roles(&mut gained_roles, &member_data, &user_data);
+  let mut gained_metabit_roles = handle_metabit_roles(&mut gained_roles, &member_data, user_data);
+  let mut gained_paleo_roles = handle_paleo_roles(&mut gained_roles, &member_data, user_data);
+  let mut gained_beyond_roles = handle_beyond_roles(&mut gained_roles, &member_data, user_data);
+  let mut gained_simulation_roles = handle_simulation_roles(&mut gained_roles, &member_data, user_data);
 
   let mut applyable_roles = persistent_roles::PERSISTENT_ROLES
     .into_iter()
@@ -90,7 +90,7 @@ fn handle_metabit_roles(gained_roles: &mut Vec<&'static str>, member: &Member, u
     applyable_roles.push(apply_a_role(gained_roles, member, roles::REALITY_EXPLORER, "Reality Explorer"));
   }
 
-  return applyable_roles;
+  applyable_roles
 }
 
 fn handle_paleo_roles(gained_roles: &mut Vec<&'static str>, member: &Member, user_data: &UserData) -> Vec<RoleId> {
@@ -112,7 +112,7 @@ fn handle_paleo_roles(gained_roles: &mut Vec<&'static str>, member: &Member, use
 
 
 
-  return applyable_roles;
+  applyable_roles
 }
 
 fn handle_beyond_roles(gained_roles: &mut Vec<&'static str>, member: &Member, user_data: &UserData) -> Vec<RoleId> {
@@ -123,7 +123,7 @@ fn handle_beyond_roles(gained_roles: &mut Vec<&'static str>, member: &Member, us
     applyable_roles.push(apply_a_role(gained_roles, member, roles::PLANETARY_EXPLORER, "Planetary Explorer"));
   }
 
-  return applyable_roles;
+  applyable_roles
 }
 
 fn handle_simulation_roles(gained_roles: &mut Vec<&'static str>, member: &Member, user_data: &UserData) -> Vec<RoleId> {
@@ -157,7 +157,7 @@ fn handle_simulation_roles(gained_roles: &mut Vec<&'static str>, member: &Member
     applyable_roles.push(apply_a_role(gained_roles, member, roles::BETA_TESTER, "Beta Tester"));
   }
 
-  return applyable_roles;
+  applyable_roles
 }
 
 fn apply_a_role(gained_roles: &mut Vec<&'static str>, member: &Member, role_id: u64, role_name: &'static str) -> RoleId {

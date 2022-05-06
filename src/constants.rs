@@ -45,12 +45,8 @@ pub mod persistent_roles {
 
 pub const C2SGUILD: u64 = 488_478_892_873_744_385;
 
-// pub mod requirements {
-//   pub const REALITY_LEGEND: i64 = 100_000_000_000_000;
-//   pub const REALITY_EXPERT: i64 = 1_000_000_000;
-//   pub const REALITY_EXPLORER: i64 = 1_000_000;
-// }
-
+// The value must exceed 32 bit for the case of checking if the user actually reached that specific number.
+#[allow(clippy::enum_clike_unportable_variant)]
 pub enum MetabitRequirements {
   RealityLegend = 100_000_000_000_000,
   RealityExpert = 1_000_000_000,
@@ -89,7 +85,7 @@ pub enum LOG {
   FAILURE,
 }
 
-pub const BACKGROUND: &'static str = "\u{001b}[40m";
-pub const SUCCESSFUL: &'static str = "\u{001b}[0;32m";
-pub const INFORMATIONAL: &'static str = "\u{001b}[1;33m";
-pub const FAILURE: &'static str = "\u{001b}[0;31m";
+pub const BACKGROUND: &str = "\u{001b}[40m";
+pub const SUCCESSFUL: &str = "\u{001b}[0;32m";
+pub const INFORMATIONAL: &str = "\u{001b}[1;33m";
+pub const FAILURE: &str = "\u{001b}[0;31m";

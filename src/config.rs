@@ -24,17 +24,23 @@ impl Config {
         }
     }
 
-    fn setup_pg_config<'a>(db_config: &'a mut deadpool_postgres::Config, env_vars: &'a Vec<(String, String)>) -> &'a mut deadpool_postgres::Config {
-        db_config.user = Some(find_key(&env_vars, "DBUSER"));
-        db_config.password = Some(find_key(&env_vars, "PASSWORD"));
-        db_config.host = Some(find_key(&env_vars, "HOST"));
-        db_config.port = Some(find_key(&env_vars, "PORT").parse().unwrap());
-        db_config.dbname = Some(find_key(&env_vars, "DBNAME"));
+    fn setup_pg_config<'a>(db_config: &'a mut deadpool_postgres::Config, env_vars: &'a [(String, String)]) -> &'a mut deadpool_postgres::Config {
+        db_config.user = Some(find_key(env_vars, "DBUSER"));
+        db_config.password = Some(find_key(env_vars, "PASSWORD"));
+        db_config.host = Some(find_key(env_vars, "HOST"));
+        db_config.port = Some(find_key(env_vars, "PORT").parse().unwrap());
+        db_config.dbname = Some(find_key(env_vars, "DBNAME"));
         db_config
     }
 }
 
-pub fn find_key(iteration: &Vec<(String, String)>, key_search: &'static str) -> String {
+impl Default for Config {
+    fn default() -> Self {
+        Config::new()
+    }
+}
+
+pub fn find_key(iteration: &[(String, String)], key_search: &'static str) -> String {
     match iteration.iter().find(|(key, _)| key == key_search) {
         Some((_, value)) => value.to_string(),
         None => panic!(
