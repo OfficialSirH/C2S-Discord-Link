@@ -28,7 +28,7 @@ async fn main() -> std::io::Result<()> {
     })
     .bind(config.server_addr.clone())?
     .run();
-    webhook_log(format!("Server running at http://{}/", config.server_addr), constants::LOG::SUCCESSFUL).await.unwrap();
+    webhook_log(format!("Server running at http://{}/", config.server_addr), constants::LOG::SUCCESSFUL).await;
     println!("Server running at http://{}/", config.server_addr);
 
     server.await

@@ -43,7 +43,7 @@ impl<T: std::marker::Send> LogMyError<T> for Result<T, MyError> {
                     ErrorLogType::USER(token) => format!("Error with a user\n\ntoken: {}\n\n{}", token, error.to_string()),
                     ErrorLogType::INTERNAL => error.to_string(),
                 };
-                webhook_log(error_content, LOG::FAILURE).await.unwrap_or(());
+                webhook_log(error_content, LOG::FAILURE).await;
                 return Err(error);
             },
         }
@@ -124,9 +124,6 @@ pub async fn update_user(
         format!("user with ID {} gained the following roles: {}", updated_data.discord_id, gained_roles.join(", "))
     };
 
-    match webhook_log(logged_roles, LOG::INFORMATIONAL).await {
-        Ok(value) => value,
-        Err(_) => return Ok(HttpResponse::Ok().json(MessageResponse { message: roles })),
-    };
+    webhook_log(logged_roles, LOG::INFORMATIONAL).await;
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
