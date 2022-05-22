@@ -1,12 +1,12 @@
 use crate::{
-    constants::{LOG, ErrorLogType},
+    constants::{ErrorLogType, LOG},
     db,
     errors::MyError,
     models::{DataTypeAccurateUserData, MessageResponse, ReceivedUserData},
     role_handling::handle_roles,
     webhook_logging::webhook_log,
 };
-use actix_web::{web, HttpResponse};
+use actix_web::{delete, patch, post, web, HttpResponse};
 use async_trait::async_trait;
 use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
@@ -40,12 +40,16 @@ impl<T: std::marker::Send> LogMyError<T> for Result<T, MyError> {
             Ok(value) => Ok(value),
             Err(error) => {
                 let error_content = match error_type {
-                    ErrorLogType::USER(token) => format!("Error with a user\n\ntoken: {}\n\n{}", token, error.to_string()),
+                    ErrorLogType::USER(token) => format!(
+                        "Error with a user\n\ntoken: {}\n\n{}",
+                        token,
+                        error.to_string()
+                    ),
                     ErrorLogType::INTERNAL => error.to_string(),
                 };
                 webhook_log(error_content, LOG::FAILURE).await;
                 return Err(error);
-            },
+            }
         }
     }
 }
@@ -56,6 +60,102 @@ pub struct PlayerData {
     player_id: String,
 }
 
+#[post("")]
+pub async fn og_update_user(
+    query: Option<web::Query<PlayerData>>,
+    received_user: web::Json<ReceivedUserData>,
+    db_pool: web::Data<Pool>,
+) -> Result<HttpResponse, MyError> {
+    let query = match query {
+        Some(value) => value,
+        None => return create_user(received_user, db_pool).await,
+    };
+
+    let user_data: ReceivedUserData = received_user.into_inner();
+    let user_data = DataTypeAccurateUserData {
+        player_token: user_data.player_token,
+        beta_tester: user_data.beta_tester,
+        metabits: user_data.metabits as i64,
+        dino_rank: user_data.dino_rank,
+        prestige_rank: user_data.prestige_rank,
+        beyond_rank: user_data.beyond_rank,
+        singularity_speedrun_time: user_data.singularity_speedrun_time,
+        all_sharks_obtained: user_data.all_sharks_obtained,
+        all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,
+    };
+
+    let client: Client = db_pool
+        .get()
+        .await
+        .make_response(MyError::InternalError(
+            "request failed at creating database client, please try again",
+        ))
+        .make_log(ErrorLogType::INTERNAL)
+        .await?;
+    let config = crate::config::Config::new();
+
+    let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
+    user_token.input(query.player_id.as_bytes());
+    user_token.input(user_data.player_token.as_bytes());
+
+    let user_token = user_token
+        .result()
+        .code()
+        .iter()
+        .map(|byte| format!("{:02x?}", byte))
+        .collect::<Vec<String>>()
+        .join("");
+
+    db::get_userdata(&client, &user_token)
+        .await
+        .make_response(MyError::InternalError(
+            "Failed at retrieving existing data, you may not have your account linked yet",
+        ))
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await?;
+
+    let updated_data = db::update_userdata(&client, &user_token, user_data)
+        .await
+        .make_response(MyError::InternalError(
+            "The request has unfortunately failed the update",
+        ))
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await?;
+
+    let gained_roles = handle_roles(&updated_data, config)
+        .await
+        .make_response(MyError::InternalError(
+            "The role-handling process has failed",
+        ))
+        .make_log(ErrorLogType::USER(user_token))
+        .await?;
+    let roles = if gained_roles.join(", ").is_empty() {
+        "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
+    } else {
+        format!(
+            "The request was successful, you've gained the following roles: {}",
+            gained_roles.join(", ")
+        )
+    };
+
+    let logged_roles = if gained_roles.join(", ").is_empty() {
+        format!(
+            "user with ID {} had a successful request but gained no roles",
+            updated_data.discord_id
+        )
+    } else {
+        format!(
+            "user with ID {} gained the following roles: {}",
+            updated_data.discord_id,
+            gained_roles.join(", ")
+        )
+    };
+
+    webhook_log(logged_roles, LOG::INFORMATIONAL).await;
+    Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
+}
+
+#[patch("/{player_id}")]
 pub async fn update_user(
     query: web::Query<PlayerData>,
     received_user: web::Json<ReceivedUserData>,
@@ -74,9 +174,14 @@ pub async fn update_user(
         all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,
     };
 
-    let client: Client = db_pool.get().await.make_response(MyError::InternalError(
-        "request failed at creating database client, please try again",
-    )).make_log(ErrorLogType::INTERNAL).await?;
+    let client: Client = db_pool
+        .get()
+        .await
+        .make_response(MyError::InternalError(
+            "request failed at creating database client, please try again",
+        ))
+        .make_log(ErrorLogType::INTERNAL)
+        .await?;
     let config = crate::config::Config::new();
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
@@ -95,20 +200,25 @@ pub async fn update_user(
         .await
         .make_response(MyError::InternalError(
             "Failed at retrieving existing data, you may not have your account linked yet",
-        )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
+        ))
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await?;
 
     let updated_data = db::update_userdata(&client, &user_token, user_data)
         .await
         .make_response(MyError::InternalError(
             "The request has unfortunately failed the update",
-        )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
+        ))
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await?;
 
-    let gained_roles =
-        handle_roles(&updated_data, config)
-            .await
-            .make_response(MyError::InternalError(
-                "The role-handling process has failed",
-            )).make_log(ErrorLogType::USER(user_token)).await?;
+    let gained_roles = handle_roles(&updated_data, config)
+        .await
+        .make_response(MyError::InternalError(
+            "The role-handling process has failed",
+        ))
+        .make_log(ErrorLogType::USER(user_token))
+        .await?;
     let roles = if gained_roles.join(", ").is_empty() {
         "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
     } else {
@@ -119,9 +229,16 @@ pub async fn update_user(
     };
 
     let logged_roles = if gained_roles.join(", ").is_empty() {
-        format!("user with ID {} had a successful request but gained no roles", updated_data.discord_id)
+        format!(
+            "user with ID {} had a successful request but gained no roles",
+            updated_data.discord_id
+        )
     } else {
-        format!("user with ID {} gained the following roles: {}", updated_data.discord_id, gained_roles.join(", "))
+        format!(
+            "user with ID {} gained the following roles: {}",
+            updated_data.discord_id,
+            gained_roles.join(", ")
+        )
     };
 
     webhook_log(logged_roles, LOG::INFORMATIONAL).await;
@@ -129,7 +246,6 @@ pub async fn update_user(
 }
 
 pub async fn create_user(
-    query: web::Query<PlayerData>,
     received_user: web::Json<ReceivedUserData>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
@@ -146,13 +262,19 @@ pub async fn create_user(
         all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,
     };
 
-    let client: Client = db_pool.get().await.make_response(MyError::InternalError(
-        "request failed at creating database client, please try again",
-    )).make_log(ErrorLogType::INTERNAL).await?;
+    let client: Client = db_pool
+        .get()
+        .await
+        .make_response(MyError::InternalError(
+            "request failed at creating database client, please try again",
+        ))
+        .make_log(ErrorLogType::INTERNAL)
+        .await?;
     let config = crate::config::Config::new();
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
-    user_token.input(query.player_id.as_bytes());
+    // TODO: uncomment this after finished testing
+    // user_token.input(query.player_id.as_bytes());
     user_token.input(user_data.player_token.as_bytes());
 
     let user_token = user_token
@@ -167,20 +289,25 @@ pub async fn create_user(
         .await
         .make_response(MyError::InternalError(
             "Failed at retrieving existing data, you may not have your account linked yet",
-        )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
+        ))
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await?;
 
     let updated_data = db::update_userdata(&client, &user_token, user_data)
         .await
         .make_response(MyError::InternalError(
             "The request has unfortunately failed the update",
-        )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
+        ))
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await?;
 
-    let gained_roles =
-        handle_roles(&updated_data, config)
-            .await
-            .make_response(MyError::InternalError(
-                "The role-handling process has failed",
-            )).make_log(ErrorLogType::USER(user_token)).await?;
+    let gained_roles = handle_roles(&updated_data, config)
+        .await
+        .make_response(MyError::InternalError(
+            "The role-handling process has failed",
+        ))
+        .make_log(ErrorLogType::USER(user_token))
+        .await?;
     let roles = if gained_roles.join(", ").is_empty() {
         "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
     } else {
@@ -191,15 +318,23 @@ pub async fn create_user(
     };
 
     let logged_roles = if gained_roles.join(", ").is_empty() {
-        format!("user with ID {} had a successful request but gained no roles", updated_data.discord_id)
+        format!(
+            "user with ID {} had a successful request but gained no roles",
+            updated_data.discord_id
+        )
     } else {
-        format!("user with ID {} gained the following roles: {}", updated_data.discord_id, gained_roles.join(", "))
+        format!(
+            "user with ID {} gained the following roles: {}",
+            updated_data.discord_id,
+            gained_roles.join(", ")
+        )
     };
 
     webhook_log(logged_roles, LOG::INFORMATIONAL).await;
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
+#[delete("/{player_id}")]
 pub async fn delete_user(
     query: web::Query<PlayerData>,
     received_user: web::Json<ReceivedUserData>,
@@ -218,9 +353,14 @@ pub async fn delete_user(
         all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,
     };
 
-    let client: Client = db_pool.get().await.make_response(MyError::InternalError(
-        "request failed at creating database client, please try again",
-    )).make_log(ErrorLogType::INTERNAL).await?;
+    let client: Client = db_pool
+        .get()
+        .await
+        .make_response(MyError::InternalError(
+            "request failed at creating database client, please try again",
+        ))
+        .make_log(ErrorLogType::INTERNAL)
+        .await?;
     let config = crate::config::Config::new();
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
@@ -239,20 +379,25 @@ pub async fn delete_user(
         .await
         .make_response(MyError::InternalError(
             "Failed at retrieving existing data, you may not have your account linked yet",
-        )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
+        ))
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await?;
 
     let updated_data = db::update_userdata(&client, &user_token, user_data)
         .await
         .make_response(MyError::InternalError(
             "The request has unfortunately failed the update",
-        )).make_log(ErrorLogType::USER(user_token.to_string())).await?;
+        ))
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await?;
 
-    let gained_roles =
-        handle_roles(&updated_data, config)
-            .await
-            .make_response(MyError::InternalError(
-                "The role-handling process has failed",
-            )).make_log(ErrorLogType::USER(user_token)).await?;
+    let gained_roles = handle_roles(&updated_data, config)
+        .await
+        .make_response(MyError::InternalError(
+            "The role-handling process has failed",
+        ))
+        .make_log(ErrorLogType::USER(user_token))
+        .await?;
     let roles = if gained_roles.join(", ").is_empty() {
         "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
     } else {
@@ -263,9 +408,16 @@ pub async fn delete_user(
     };
 
     let logged_roles = if gained_roles.join(", ").is_empty() {
-        format!("user with ID {} had a successful request but gained no roles", updated_data.discord_id)
+        format!(
+            "user with ID {} had a successful request but gained no roles",
+            updated_data.discord_id
+        )
     } else {
-        format!("user with ID {} gained the following roles: {}", updated_data.discord_id, gained_roles.join(", "))
+        format!(
+            "user with ID {} gained the following roles: {}",
+            updated_data.discord_id,
+            gained_roles.join(", ")
+        )
     };
 
     webhook_log(logged_roles, LOG::INFORMATIONAL).await;

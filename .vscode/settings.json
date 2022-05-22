@@ -10,5 +10,6 @@
       "port": 5432,
       "driver": "PostgreSQL",
     }
-  ]
+  ],
+  "editor.formatOnSave": true,
 }
