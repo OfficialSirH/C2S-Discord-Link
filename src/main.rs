@@ -3,6 +3,7 @@ pub mod constants;
 pub mod db;
 pub mod errors;
 mod handlers;
+pub mod middleware;
 pub mod models;
 pub mod role_handling;
 pub mod webhook_logging;
@@ -30,6 +31,7 @@ async fn main() -> std::io::Result<()> {
         App::new().app_data(Data::new(pool.clone())).service(
             web::scope("/userdata")
                 .guard(guard::Header("content-type", "application/json"))
+                .wrap(middleware::UserDataAuthorization {})
                 // TODO: remove the post to og_update_user and uncomment the service for create_user after the game hits stable with the new API
                 .service(og_update_user)
                 // .service(create_user)
