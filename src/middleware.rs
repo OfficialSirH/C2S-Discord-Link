@@ -107,7 +107,12 @@ where
 
             println!("id: {}, token: {}", player_id, player_token);
 
-            // TODO: validate the player_id and player_token
+            // TODO: put together validation, replace player_id with email to be able to perform proper validation, and require beta bool so then we know which server to validate against
+
+            let config = crate::config::Config::new();
+            // just a little reminder here for what URLs to be used when later implementing reqwest
+            config.game_saves_dev_api;
+            config.game_saves_prod_api;
 
             let res = fut.await?;
 

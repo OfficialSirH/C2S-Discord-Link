@@ -50,3 +50,29 @@ pub struct DataTypeAccurateUserData {
 pub struct MessageResponse {
     pub message: String,
 }
+
+/// response structure for game saves metadata
+#[derive(Deserialize)]
+pub struct GameSavesMetadataResponse {
+    #[serde(rename = "responseType")]
+    pub response_type: String,
+    pub url: String,
+    pub error: Option<String>,
+    #[serde(rename = "fileSize")]
+    pub file_size: Option<i64>,
+    #[serde(rename = "dateUpdated")]
+    pub date_updated: Option<i64>,
+    #[serde(rename = "playTime")]
+    pub play_time: Option<i64>,
+}
+
+/// request structure for retrieving game saves metadata
+#[derive(Deserialize)]
+pub struct GameSavesMetadataRequest {
+    /// should *always* be "getmetadata"
+    pub action: String,
+    /// user email
+    pub username: String,
+    /// user access token
+    pub token: String,
+}

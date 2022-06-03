@@ -7,6 +7,8 @@ pub struct Config {
     pub webhook_token: String,
     pub userdata_auth: String,
     pub server_addr: String,
+    pub game_saves_dev_api: String,
+    pub game_saves_prod_api: String,
     pub pg: deadpool_postgres::Config,
 }
 impl Config {
@@ -20,11 +22,16 @@ impl Config {
             webhook_token: find_key(&environment_vars, "WEBHOOK_TOKEN"),
             userdata_auth: find_key(&environment_vars, "USERDATA_AUTH"),
             server_addr: find_key(&environment_vars, "SERVER_ADDR"),
+            game_saves_dev_api: find_key(&environment_vars, "GAME_SAVES_DEV_API"),
+            game_saves_prod_api: find_key(&environment_vars, "GAME_SAVES_PROD_API"),
             pg: database_config,
         }
     }
 
-    fn setup_pg_config<'a>(db_config: &'a mut deadpool_postgres::Config, env_vars: &'a [(String, String)]) -> &'a mut deadpool_postgres::Config {
+    fn setup_pg_config<'a>(
+        db_config: &'a mut deadpool_postgres::Config,
+        env_vars: &'a [(String, String)],
+    ) -> &'a mut deadpool_postgres::Config {
         db_config.user = Some(find_key(env_vars, "DBUSER"));
         db_config.password = Some(find_key(env_vars, "PASSWORD"));
         db_config.host = Some(find_key(env_vars, "HOST"));
