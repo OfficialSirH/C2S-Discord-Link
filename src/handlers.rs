@@ -2,7 +2,7 @@ use crate::{
     constants::{ErrorLogType, LOG},
     db,
     errors::MyError,
-    models::{DataTypeAccurateUserData, MessageResponse, ReceivedUserData},
+    models::{MessageResponse, ReceivedUserData},
     role_handling::handle_roles,
     webhook_logging::webhook_log,
 };
@@ -72,17 +72,6 @@ pub async fn og_update_user(
     };
 
     let user_data: ReceivedUserData = received_user.into_inner();
-    let user_data = DataTypeAccurateUserData {
-        player_token: user_data.player_token,
-        beta_tester: user_data.beta_tester,
-        metabits: user_data.metabits as i64,
-        dino_rank: user_data.dino_rank,
-        prestige_rank: user_data.prestige_rank,
-        beyond_rank: user_data.beyond_rank,
-        singularity_speedrun_time: user_data.singularity_speedrun_time,
-        all_sharks_obtained: user_data.all_sharks_obtained,
-        all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,
-    };
 
     let client: Client = db_pool
         .get()
@@ -162,17 +151,6 @@ pub async fn update_user(
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
     let user_data: ReceivedUserData = received_user.into_inner();
-    let user_data = DataTypeAccurateUserData {
-        player_token: user_data.player_token,
-        beta_tester: user_data.beta_tester,
-        metabits: user_data.metabits as i64,
-        dino_rank: user_data.dino_rank,
-        prestige_rank: user_data.prestige_rank,
-        beyond_rank: user_data.beyond_rank,
-        singularity_speedrun_time: user_data.singularity_speedrun_time,
-        all_sharks_obtained: user_data.all_sharks_obtained,
-        all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,
-    };
 
     let client: Client = db_pool
         .get()
@@ -250,17 +228,6 @@ pub async fn create_user(
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
     let user_data: ReceivedUserData = received_user.into_inner();
-    let user_data = DataTypeAccurateUserData {
-        player_token: user_data.player_token,
-        beta_tester: user_data.beta_tester,
-        metabits: user_data.metabits as i64,
-        dino_rank: user_data.dino_rank,
-        prestige_rank: user_data.prestige_rank,
-        beyond_rank: user_data.beyond_rank,
-        singularity_speedrun_time: user_data.singularity_speedrun_time,
-        all_sharks_obtained: user_data.all_sharks_obtained,
-        all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,
-    };
 
     let client: Client = db_pool
         .get()
@@ -340,18 +307,7 @@ pub async fn delete_user(
     received_user: web::Json<ReceivedUserData>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
-    let user_data: ReceivedUserData = received_user.into_inner();
-    let user_data = DataTypeAccurateUserData {
-        player_token: user_data.player_token,
-        beta_tester: user_data.beta_tester,
-        metabits: user_data.metabits as i64,
-        dino_rank: user_data.dino_rank,
-        prestige_rank: user_data.prestige_rank,
-        beyond_rank: user_data.beyond_rank,
-        singularity_speedrun_time: user_data.singularity_speedrun_time,
-        all_sharks_obtained: user_data.all_sharks_obtained,
-        all_hidden_achievements_obtained: user_data.all_hidden_achievements_obtained,
-    };
+    let user_data = received_user.into_inner();
 
     let client: Client = db_pool
         .get()

@@ -33,19 +33,6 @@ pub struct ReceivedUserData {
     pub all_hidden_achievements_obtained: bool,
 }
 
-#[derive(Deserialize)]
-pub struct DataTypeAccurateUserData {
-    pub player_token: String,
-    pub beta_tester: bool,
-    pub metabits: i64,
-    pub dino_rank: i32,
-    pub prestige_rank: i32,
-    pub beyond_rank: i32,
-    pub singularity_speedrun_time: Option<f64>,
-    pub all_sharks_obtained: bool,
-    pub all_hidden_achievements_obtained: bool,
-}
-
 #[derive(Serialize)]
 pub struct MessageResponse {
     pub message: String,
