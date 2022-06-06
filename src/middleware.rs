@@ -75,6 +75,16 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
+        if req.query_string() == "" {
+            let fut = self.service.call(req);
+
+            return Box::pin(async move {
+                let res = fut.await?;
+
+                Ok(res)
+            });
+        }
+
         let headers = &mut req.headers().clone();
 
         let mut auth_header = headers.remove("authorization");

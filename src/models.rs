@@ -19,7 +19,7 @@ pub struct UserData {
 }
 
 #[derive(Deserialize)]
-pub struct ReceivedUserData {
+pub struct OGUpdateUserData {
     #[serde(rename = "playerToken")]
     pub player_token: String,
     #[serde(rename = "betaTester")]
@@ -31,6 +31,44 @@ pub struct ReceivedUserData {
     pub singularity_speedrun_time: Option<f64>,
     pub all_sharks_obtained: bool,
     pub all_hidden_achievements_obtained: bool,
+}
+
+#[derive(Deserialize)]
+pub struct UpdateUserData {
+    pub beta_tester: bool,
+    pub metabits: f64,
+    pub dino_rank: i32,
+    pub prestige_rank: i32,
+    pub beyond_rank: i32,
+    pub singularity_speedrun_time: Option<f64>,
+    pub all_sharks_obtained: bool,
+    pub all_hidden_achievements_obtained: bool,
+}
+
+impl From<OGUpdateUserData> for UpdateUserData {
+    fn from(data: OGUpdateUserData) -> Self {
+        UpdateUserData {
+            beta_tester: data.beta_tester,
+            metabits: data.metabits,
+            dino_rank: data.dino_rank,
+            prestige_rank: data.prestige_rank,
+            beyond_rank: data.beyond_rank,
+            singularity_speedrun_time: data.singularity_speedrun_time,
+            all_sharks_obtained: data.all_sharks_obtained,
+            all_hidden_achievements_obtained: data.all_hidden_achievements_obtained,
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct CreateUserData {
+    pub discord_id: String,
+    pub beta_tester: bool,
+}
+
+#[derive(Deserialize)]
+pub struct DeleteUserData {
+    pub discord_id: String,
 }
 
 #[derive(Serialize)]

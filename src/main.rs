@@ -18,7 +18,7 @@ use dotenv::dotenv;
 use tokio_postgres::NoTls;
 use webhook_logging::webhook_log;
 
-use crate::handlers::{delete_user, og_update_user, update_user};
+use crate::handlers::{create_user_pathway, delete_user, update_user};
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -31,10 +31,14 @@ async fn main() -> std::io::Result<()> {
         App::new().app_data(Data::new(pool.clone())).service(
             web::scope("/userdata")
                 .guard(guard::Header("content-type", "application/json"))
-                .wrap(middleware::UserDataAuthorization {})
-                // TODO: remove the post to og_update_user and uncomment the service for create_user after the game hits stable with the new API
-                .service(og_update_user)
-                // .service(create_user)
+                .service(
+                    web::resource("")
+                        .guard(guard::fn_guard(|ctx| {
+                            ctx.head().headers().contains_key("authorization")
+                        }))
+                        .wrap(middleware::UserDataAuthorization {})
+                        .route(web::post().to(create_user_pathway)),
+                )
                 .service(delete_user)
                 .service(update_user),
         )

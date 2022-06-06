@@ -1,4 +1,4 @@
-use crate::models::{ReceivedUserData, UserData};
+use crate::models::{UpdateUserData, UserData};
 use deadpool_postgres::Client;
 use tokio_pg_mapper::{Error, FromTokioPostgresRow};
 
@@ -19,7 +19,7 @@ pub async fn get_userdata(client: &Client, token: &str) -> Result<UserData, Erro
 pub async fn update_userdata(
     client: &Client,
     token: &str,
-    user_data: ReceivedUserData,
+    user_data: UpdateUserData,
 ) -> Result<UserData, Error> {
     let _stmt = include_str!("../sql/update_userdata.sql");
     let _stmt = _stmt.replace("$token", format!("'{}'", &token).as_str());

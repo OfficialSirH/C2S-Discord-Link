@@ -2,11 +2,11 @@ use crate::{
     constants::{ErrorLogType, LOG},
     db,
     errors::MyError,
-    models::{MessageResponse, ReceivedUserData},
+    models::{CreateUserData, DeleteUserData, MessageResponse, OGUpdateUserData, UpdateUserData},
     role_handling::handle_roles,
     webhook_logging::webhook_log,
 };
-use actix_web::{delete, patch, post, web, HttpResponse};
+use actix_web::{delete, patch, web, HttpResponse};
 use async_trait::async_trait;
 use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
@@ -60,18 +60,34 @@ pub struct PlayerData {
     player_id: String,
 }
 
-#[post("")]
-pub async fn og_update_user(
+pub async fn create_user_pathway(
+    pool: web::Data<Pool>,
+    // og_update_user params
     query: Option<web::Query<PlayerData>>,
-    received_user: web::Json<ReceivedUserData>,
+    received_user: Option<web::Json<OGUpdateUserData>>,
+    // create_user params
+    create_user_data: Option<web::Json<CreateUserData>>,
+) -> Result<HttpResponse, MyError> {
+    match query {
+        Some(q) => match received_user {
+            Some(user) => og_update_user(q, user, pool).await,
+            None => Err(MyError::BadRequest("No user data received")),
+        },
+        None => match create_user_data {
+            Some(user) => create_user(user, pool).await,
+            None => Err(MyError::BadRequest("No user data received")),
+        },
+    }
+}
+
+pub async fn og_update_user(
+    query: web::Query<PlayerData>,
+    received_user: web::Json<OGUpdateUserData>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
-    let query = match query {
-        Some(value) => value,
-        None => return create_user(received_user, db_pool).await,
-    };
+    let user_data = received_user.into_inner();
 
-    let user_data: ReceivedUserData = received_user.into_inner();
+    println!("og update user function");
 
     let client: Client = db_pool
         .get()
@@ -103,7 +119,7 @@ pub async fn og_update_user(
         .make_log(ErrorLogType::USER(user_token.to_string()))
         .await?;
 
-    let updated_data = db::update_userdata(&client, &user_token, user_data)
+    let updated_data = db::update_userdata(&client, &user_token, UpdateUserData::from(user_data))
         .await
         .make_response(MyError::InternalError(
             "The request has unfortunately failed the update",
@@ -147,10 +163,10 @@ pub async fn og_update_user(
 #[patch("/{player_id}")]
 pub async fn update_user(
     query: web::Query<PlayerData>,
-    received_user: web::Json<ReceivedUserData>,
+    received_user: web::Json<UpdateUserData>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
-    let user_data: ReceivedUserData = received_user.into_inner();
+    let user_data = received_user.into_inner();
 
     let client: Client = db_pool
         .get()
@@ -164,7 +180,8 @@ pub async fn update_user(
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
     user_token.input(query.player_id.as_bytes());
-    user_token.input(user_data.player_token.as_bytes());
+    // TODO: create a helper function to simplify the process of using the authorization docoding.
+    // user_token.input(user_data.player_token.as_bytes());
 
     let user_token = user_token
         .result()
@@ -224,10 +241,12 @@ pub async fn update_user(
 }
 
 pub async fn create_user(
-    received_user: web::Json<ReceivedUserData>,
+    received_user: web::Json<CreateUserData>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
-    let user_data: ReceivedUserData = received_user.into_inner();
+    let _user_data = received_user.into_inner();
+
+    println!("create user function");
 
     let client: Client = db_pool
         .get()
@@ -240,9 +259,9 @@ pub async fn create_user(
     let config = crate::config::Config::new();
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
-    // TODO: uncomment this after finished testing
+    // TODO: get the middleware auth validation done so then it can be used for this function.
     // user_token.input(query.player_id.as_bytes());
-    user_token.input(user_data.player_token.as_bytes());
+    // user_token.input(user_data.player_token.as_bytes());
 
     let user_token = user_token
         .result()
@@ -257,57 +276,62 @@ pub async fn create_user(
         .make_response(MyError::InternalError(
             "Failed at retrieving existing data, you may not have your account linked yet",
         ))
-        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .make_log(ErrorLogType::USER(user_token.to_owned()))
         .await?;
 
-    let updated_data = db::update_userdata(&client, &user_token, user_data)
-        .await
-        .make_response(MyError::InternalError(
-            "The request has unfortunately failed the update",
-        ))
-        .make_log(ErrorLogType::USER(user_token.to_string()))
-        .await?;
+    Ok(HttpResponse::Ok().json(MessageResponse {
+        message: "The request was successful (WIP POST route)".to_owned(),
+    }))
 
-    let gained_roles = handle_roles(&updated_data, config)
-        .await
-        .make_response(MyError::InternalError(
-            "The role-handling process has failed",
-        ))
-        .make_log(ErrorLogType::USER(user_token))
-        .await?;
-    let roles = if gained_roles.join(", ").is_empty() {
-        "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
-    } else {
-        format!(
-            "The request was successful, you've gained the following roles: {}",
-            gained_roles.join(", ")
-        )
-    };
+    // TODO: rewrite this area to create an entry instead.
+    // let updated_data = db::update_userdata(&client, &user_token, user_data)
+    //     .await
+    //     .make_response(MyError::InternalError(
+    //         "The request has unfortunately failed the update",
+    //     ))
+    //     .make_log(ErrorLogType::USER(user_token.to_string()))
+    //     .await?;
 
-    let logged_roles = if gained_roles.join(", ").is_empty() {
-        format!(
-            "user with ID {} had a successful request but gained no roles",
-            updated_data.discord_id
-        )
-    } else {
-        format!(
-            "user with ID {} gained the following roles: {}",
-            updated_data.discord_id,
-            gained_roles.join(", ")
-        )
-    };
+    // let gained_roles = handle_roles(&updated_data, config)
+    //     .await
+    //     .make_response(MyError::InternalError(
+    //         "The role-handling process has failed",
+    //     ))
+    //     .make_log(ErrorLogType::USER(user_token))
+    //     .await?;
+    // let roles = if gained_roles.join(", ").is_empty() {
+    //     "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
+    // } else {
+    //     format!(
+    //         "The request was successful, you've gained the following roles: {}",
+    //         gained_roles.join(", ")
+    //     )
+    // };
 
-    webhook_log(logged_roles, LOG::INFORMATIONAL).await;
-    Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
+    // let logged_roles = if gained_roles.join(", ").is_empty() {
+    //     format!(
+    //         "user with ID {} had a successful request but gained no roles",
+    //         updated_data.discord_id
+    //     )
+    // } else {
+    //     format!(
+    //         "user with ID {} gained the following roles: {}",
+    //         updated_data.discord_id,
+    //         gained_roles.join(", ")
+    //     )
+    // };
+
+    // webhook_log(logged_roles, LOG::INFORMATIONAL).await;
+    // Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
 #[delete("/{player_id}")]
 pub async fn delete_user(
     query: web::Query<PlayerData>,
-    received_user: web::Json<ReceivedUserData>,
+    received_user: web::Json<DeleteUserData>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
-    let user_data = received_user.into_inner();
+    let _user_data = received_user.into_inner();
 
     let client: Client = db_pool
         .get()
@@ -321,7 +345,7 @@ pub async fn delete_user(
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
     user_token.input(query.player_id.as_bytes());
-    user_token.input(user_data.player_token.as_bytes());
+    // user_token.input(user_data.player_token.as_bytes());
 
     let user_token = user_token
         .result()
@@ -339,43 +363,48 @@ pub async fn delete_user(
         .make_log(ErrorLogType::USER(user_token.to_string()))
         .await?;
 
-    let updated_data = db::update_userdata(&client, &user_token, user_data)
-        .await
-        .make_response(MyError::InternalError(
-            "The request has unfortunately failed the update",
-        ))
-        .make_log(ErrorLogType::USER(user_token.to_string()))
-        .await?;
+    Ok(HttpResponse::Ok().json(MessageResponse {
+        message: "The request was successful (WIP DELETE route)".to_owned(),
+    }))
 
-    let gained_roles = handle_roles(&updated_data, config)
-        .await
-        .make_response(MyError::InternalError(
-            "The role-handling process has failed",
-        ))
-        .make_log(ErrorLogType::USER(user_token))
-        .await?;
-    let roles = if gained_roles.join(", ").is_empty() {
-        "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
-    } else {
-        format!(
-            "The request was successful, you've gained the following roles: {}",
-            gained_roles.join(", ")
-        )
-    };
+    // TODO: rewrite this area to delete an entry instead.
+    // let updated_data = db::update_userdata(&client, &user_token, user_data)
+    //     .await
+    //     .make_response(MyError::InternalError(
+    //         "The request has unfortunately failed the update",
+    //     ))
+    //     .make_log(ErrorLogType::USER(user_token.to_string()))
+    //     .await?;
 
-    let logged_roles = if gained_roles.join(", ").is_empty() {
-        format!(
-            "user with ID {} had a successful request but gained no roles",
-            updated_data.discord_id
-        )
-    } else {
-        format!(
-            "user with ID {} gained the following roles: {}",
-            updated_data.discord_id,
-            gained_roles.join(", ")
-        )
-    };
+    // let gained_roles = handle_roles(&updated_data, config)
+    //     .await
+    //     .make_response(MyError::InternalError(
+    //         "The role-handling process has failed",
+    //     ))
+    //     .make_log(ErrorLogType::USER(user_token))
+    //     .await?;
+    // let roles = if gained_roles.join(", ").is_empty() {
+    //     "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
+    // } else {
+    //     format!(
+    //         "The request was successful, you've gained the following roles: {}",
+    //         gained_roles.join(", ")
+    //     )
+    // };
 
-    webhook_log(logged_roles, LOG::INFORMATIONAL).await;
-    Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
+    // let logged_roles = if gained_roles.join(", ").is_empty() {
+    //     format!(
+    //         "user with ID {} had a successful request but gained no roles",
+    //         updated_data.discord_id
+    //     )
+    // } else {
+    //     format!(
+    //         "user with ID {} gained the following roles: {}",
+    //         updated_data.discord_id,
+    //         gained_roles.join(", ")
+    //     )
+    // };
+
+    // webhook_log(logged_roles, LOG::INFORMATIONAL).await;
+    // Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
