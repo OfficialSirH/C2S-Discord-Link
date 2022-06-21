@@ -2,11 +2,11 @@ use crate::{
     constants::{ErrorLogType, LOG},
     db,
     errors::MyError,
-    models::{CreateUserData, DeleteUserData, MessageResponse, OGUpdateUserData, UpdateUserData},
+    models::{MessageResponse, OGUpdateUserData, UpdateUserData},
     role_handling::handle_roles,
     webhook_logging::webhook_log,
 };
-use actix_web::{delete, patch, web, HttpResponse};
+use actix_web::{web, HttpResponse};
 use async_trait::async_trait;
 use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
@@ -66,17 +66,14 @@ pub async fn create_user_pathway(
     query: Option<web::Query<PlayerData>>,
     received_user: Option<web::Json<OGUpdateUserData>>,
     // create_user params
-    create_user_data: Option<web::Json<CreateUserData>>,
+    create_user_data: Option<web::Json<UpdateUserData>>,
 ) -> Result<HttpResponse, MyError> {
     match query {
         Some(q) => match received_user {
             Some(user) => og_update_user(q, user, pool).await,
             None => Err(MyError::BadRequest("No user data received")),
         },
-        None => match create_user_data {
-            Some(user) => create_user(user, pool).await,
-            None => Err(MyError::BadRequest("No user data received")),
-        },
+        None => create_user(create_user_data, pool).await,
     }
 }
 
@@ -160,9 +157,7 @@ pub async fn og_update_user(
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
-#[patch("/{player_id}")]
 pub async fn update_user(
-    query: web::Query<PlayerData>,
     received_user: web::Json<UpdateUserData>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
@@ -179,7 +174,7 @@ pub async fn update_user(
     let config = crate::config::Config::new();
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
-    user_token.input(query.player_id.as_bytes());
+    // user_token.input(query.player_id.as_bytes());
     // TODO: create a helper function to simplify the process of using the authorization docoding.
     // user_token.input(user_data.player_token.as_bytes());
 
@@ -241,10 +236,10 @@ pub async fn update_user(
 }
 
 pub async fn create_user(
-    received_user: web::Json<CreateUserData>,
+    received_user: Option<web::Json<UpdateUserData>>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
-    let _user_data = received_user.into_inner();
+    // let _user_data = received_user.into_inner();
 
     println!("create user function");
 
@@ -325,14 +320,7 @@ pub async fn create_user(
     // Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
-#[delete("/{player_id}")]
-pub async fn delete_user(
-    query: web::Query<PlayerData>,
-    received_user: web::Json<DeleteUserData>,
-    db_pool: web::Data<Pool>,
-) -> Result<HttpResponse, MyError> {
-    let _user_data = received_user.into_inner();
-
+pub async fn delete_user(db_pool: web::Data<Pool>) -> Result<HttpResponse, MyError> {
     let client: Client = db_pool
         .get()
         .await
@@ -344,7 +332,7 @@ pub async fn delete_user(
     let config = crate::config::Config::new();
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
-    user_token.input(query.player_id.as_bytes());
+    // user_token.input(query.player_id.as_bytes());
     // user_token.input(user_data.player_token.as_bytes());
 
     let user_token = user_token
@@ -355,13 +343,13 @@ pub async fn delete_user(
         .collect::<Vec<String>>()
         .join("");
 
-    db::get_userdata(&client, &user_token)
-        .await
-        .make_response(MyError::InternalError(
-            "Failed at retrieving existing data, you may not have your account linked yet",
-        ))
-        .make_log(ErrorLogType::USER(user_token.to_string()))
-        .await?;
+    // db::get_userdata(&client, &user_token)
+    //     .await
+    //     .make_response(MyError::InternalError(
+    //         "Failed at retrieving existing data, you may not have your account linked yet",
+    //     ))
+    //     .make_log(ErrorLogType::USER(user_token.to_string()))
+    //     .await?;
 
     Ok(HttpResponse::Ok().json(MessageResponse {
         message: "The request was successful (WIP DELETE route)".to_owned(),

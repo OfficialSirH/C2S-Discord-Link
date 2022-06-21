@@ -60,17 +60,6 @@ impl From<OGUpdateUserData> for UpdateUserData {
     }
 }
 
-#[derive(Deserialize)]
-pub struct CreateUserData {
-    pub discord_id: String,
-    pub beta_tester: bool,
-}
-
-#[derive(Deserialize)]
-pub struct DeleteUserData {
-    pub discord_id: String,
-}
-
 #[derive(Serialize)]
 pub struct MessageResponse {
     pub message: String,
@@ -80,8 +69,8 @@ pub struct MessageResponse {
 #[derive(Deserialize)]
 pub struct GameSavesMetadataResponse {
     #[serde(rename = "responseType")]
-    pub response_type: String,
-    pub url: String,
+    pub response_type: Option<String>,
+    pub url: Option<String>,
     pub error: Option<String>,
     #[serde(rename = "fileSize")]
     pub file_size: Option<i64>,
@@ -93,7 +82,7 @@ pub struct GameSavesMetadataResponse {
 
 /// request structure for retrieving game saves metadata
 #[derive(Deserialize)]
-pub struct GameSavesMetadataRequest {
+pub struct GameSavesMetadataPostRequest {
     /// should *always* be "getmetadata"
     pub action: String,
     /// user email
