@@ -35,7 +35,6 @@ pub struct OGUpdateUserData {
 
 #[derive(Deserialize)]
 pub struct UpdateUserData {
-    pub beta_tester: bool,
     pub metabits: f64,
     pub dino_rank: i32,
     pub prestige_rank: i32,
@@ -48,7 +47,6 @@ pub struct UpdateUserData {
 impl From<OGUpdateUserData> for UpdateUserData {
     fn from(data: OGUpdateUserData) -> Self {
         UpdateUserData {
-            beta_tester: data.beta_tester,
             metabits: data.metabits,
             dino_rank: data.dino_rank,
             prestige_rank: data.prestige_rank,

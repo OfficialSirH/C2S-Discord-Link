@@ -6,11 +6,40 @@ use crate::{
     role_handling::handle_roles,
     webhook_logging::webhook_log,
 };
-use actix_web::{delete, post, web, HttpResponse};
+use actix_web::{
+    delete,
+    http::header::{self, Header, TryIntoHeaderValue},
+    post, web, HttpResponse,
+};
 use async_trait::async_trait;
 use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
+use reqwest::header::{HeaderName, InvalidHeaderValue};
 use serde::Deserialize;
+
+pub struct DistributionChannel(String);
+
+impl TryIntoHeaderValue for DistributionChannel {
+    type Error = InvalidHeaderValue;
+
+    fn try_into_value(self) -> Result<header::HeaderValue, Self::Error> {
+        header::HeaderValue::from_str(&self.0)
+    }
+}
+
+impl Header for DistributionChannel {
+    fn name() -> HeaderName {
+        HeaderName::from_static("x-distribution-channel")
+    }
+
+    fn parse<M: actix_web::HttpMessage>(msg: &M) -> Result<Self, actix_web::error::ParseError> {
+        let value = msg
+            .headers()
+            .get(Self::name())
+            .ok_or(actix_web::error::ParseError::Header)?;
+        Ok(DistributionChannel(value.to_str().unwrap().to_string()))
+    }
+}
 
 trait ConvertResultErrorToMyError<T> {
     fn make_response(self, error_enum: MyError) -> Result<T, MyError>;
@@ -60,23 +89,6 @@ pub struct PlayerData {
     player_id: String,
 }
 
-// pub async fn create_user_pathway(
-//     pool: web::Data<Pool>,
-//     // og_update_user params
-//     query: Option<web::Query<PlayerData>>,
-//     received_user: Option<web::Json<OGUpdateUserData>>,
-//     // create_user params
-//     create_user_data: Option<web::Json<UpdateUserData>>,
-// ) -> Result<HttpResponse, MyError> {
-//     match query {
-//         Some(q) => match received_user {
-//             Some(user) => og_update_user(q, user, pool).await,
-//             None => Err(MyError::BadRequest("No user data received")),
-//         },
-//         None => create_user(create_user_data, pool).await,
-//     }
-// }
-
 #[post("")]
 pub async fn og_update_user(
     query: web::Query<PlayerData>,
@@ -117,13 +129,18 @@ pub async fn og_update_user(
         .make_log(ErrorLogType::USER(user_token.to_string()))
         .await?;
 
-    let updated_data = db::update_userdata(&client, &user_token, UpdateUserData::from(user_data))
-        .await
-        .make_response(MyError::InternalError(
-            "The request has unfortunately failed the update",
-        ))
-        .make_log(ErrorLogType::USER(user_token.to_string()))
-        .await?;
+    let updated_data = db::update_userdata(
+        &client,
+        &user_token,
+        &user_data.beta_tester.clone(),
+        UpdateUserData::from(user_data),
+    )
+    .await
+    .make_response(MyError::InternalError(
+        "The request has unfortunately failed the update",
+    ))
+    .make_log(ErrorLogType::USER(user_token.to_string()))
+    .await?;
 
     let gained_roles = handle_roles(&updated_data, config)
         .await
@@ -159,10 +176,12 @@ pub async fn og_update_user(
 }
 
 pub async fn update_user(
+    distribution_channel: web::Header<DistributionChannel>,
     received_user: web::Json<UpdateUserData>,
     db_pool: web::Data<Pool>,
 ) -> Result<HttpResponse, MyError> {
     let user_data = received_user.into_inner();
+    let distribution_channel = distribution_channel.into_inner();
 
     let client: Client = db_pool
         .get()
@@ -195,13 +214,18 @@ pub async fn update_user(
         .make_log(ErrorLogType::USER(user_token.to_string()))
         .await?;
 
-    let updated_data = db::update_userdata(&client, &user_token, user_data)
-        .await
-        .make_response(MyError::InternalError(
-            "The request has unfortunately failed the update",
-        ))
-        .make_log(ErrorLogType::USER(user_token.to_string()))
-        .await?;
+    let updated_data = db::update_userdata(
+        &client,
+        &user_token,
+        &(distribution_channel.0 == "Beta"),
+        user_data,
+    )
+    .await
+    .make_response(MyError::InternalError(
+        "The request has unfortunately failed the update",
+    ))
+    .make_log(ErrorLogType::USER(user_token.to_string()))
+    .await?;
 
     let gained_roles = handle_roles(&updated_data, config)
         .await

@@ -19,6 +19,7 @@ pub async fn get_userdata(client: &Client, token: &str) -> Result<UserData, Erro
 pub async fn update_userdata(
     client: &Client,
     token: &str,
+    beta_branch: &bool,
     user_data: UpdateUserData,
 ) -> Result<UserData, Error> {
     let _stmt = include_str!("../sql/update_userdata.sql");
@@ -29,7 +30,7 @@ pub async fn update_userdata(
         .query(
             &stmt,
             &[
-                &user_data.beta_tester,
+                beta_branch,
                 &(user_data.metabits as i64),
                 &user_data.dino_rank,
                 &user_data.prestige_rank,
