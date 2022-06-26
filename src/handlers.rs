@@ -6,7 +6,7 @@ use crate::{
     role_handling::handle_roles,
     webhook_logging::webhook_log,
 };
-use actix_web::{web, HttpResponse};
+use actix_web::{delete, post, web, HttpResponse};
 use async_trait::async_trait;
 use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
@@ -60,23 +60,24 @@ pub struct PlayerData {
     player_id: String,
 }
 
-pub async fn create_user_pathway(
-    pool: web::Data<Pool>,
-    // og_update_user params
-    query: Option<web::Query<PlayerData>>,
-    received_user: Option<web::Json<OGUpdateUserData>>,
-    // create_user params
-    create_user_data: Option<web::Json<UpdateUserData>>,
-) -> Result<HttpResponse, MyError> {
-    match query {
-        Some(q) => match received_user {
-            Some(user) => og_update_user(q, user, pool).await,
-            None => Err(MyError::BadRequest("No user data received")),
-        },
-        None => create_user(create_user_data, pool).await,
-    }
-}
+// pub async fn create_user_pathway(
+//     pool: web::Data<Pool>,
+//     // og_update_user params
+//     query: Option<web::Query<PlayerData>>,
+//     received_user: Option<web::Json<OGUpdateUserData>>,
+//     // create_user params
+//     create_user_data: Option<web::Json<UpdateUserData>>,
+// ) -> Result<HttpResponse, MyError> {
+//     match query {
+//         Some(q) => match received_user {
+//             Some(user) => og_update_user(q, user, pool).await,
+//             None => Err(MyError::BadRequest("No user data received")),
+//         },
+//         None => create_user(create_user_data, pool).await,
+//     }
+// }
 
+#[post("")]
 pub async fn og_update_user(
     query: web::Query<PlayerData>,
     received_user: web::Json<OGUpdateUserData>,
@@ -235,6 +236,7 @@ pub async fn update_user(
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
+#[post("")]
 pub async fn create_user(
     received_user: Option<web::Json<UpdateUserData>>,
     db_pool: web::Data<Pool>,
@@ -320,6 +322,7 @@ pub async fn create_user(
     // Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
+#[delete("")]
 pub async fn delete_user(db_pool: web::Data<Pool>) -> Result<HttpResponse, MyError> {
     let client: Client = db_pool
         .get()

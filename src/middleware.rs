@@ -8,6 +8,8 @@ use actix_web::{
     Error,
 };
 
+use crate::models::{GameSavesMetadataPostRequest, GameSavesMetadataResponse};
+
 trait InvalidItems<T> {
     fn invalid_auth(self) -> Result<T, Error>;
 
@@ -28,7 +30,7 @@ impl<T> InvalidItems<T> for Option<T> {
     }
 }
 
-impl<T, E> InvalidItems<T> for Result<T, E> {
+impl<T, E: core::fmt::Debug> InvalidItems<T> for Result<T, E> {
     fn invalid_auth(self) -> Result<T, Error> {
         self.or_else(|_| {
             Err(Error::from(actix_web::error::ErrorBadRequest(
@@ -70,12 +72,16 @@ where
     type Future = Ready<Result<Self::Transform, Self::InitError>>;
 
     fn new_transform(&self, service: S) -> Self::Future {
-        ready(Ok(UserDataAuthorizationMiddleware { service }))
+        ready(Ok(UserDataAuthorizationMiddleware {
+            service,
+            http_client: reqwest::Client::new(),
+        }))
     }
 }
 
 pub struct UserDataAuthorizationMiddleware<S> {
     service: S,
+    http_client: reqwest::Client,
 }
 
 impl<S, B> Service<ServiceRequest> for UserDataAuthorizationMiddleware<S>
@@ -91,16 +97,6 @@ where
     forward_ready!(service);
 
     fn call(&self, req: ServiceRequest) -> Self::Future {
-        if req.query_string() == "" {
-            let fut = self.service.call(req);
-
-            return Box::pin(async move {
-                let res = fut.await?;
-
-                Ok(res)
-            });
-        }
-
         let headers = &mut req.headers().clone();
 
         let mut auth_header = headers.remove("authorization");
@@ -109,7 +105,7 @@ where
         let auth_header = auth_header.next();
         let distribution_header = distribution_header.next();
 
-        let path = req.path().to_owned();
+        let http_client = self.http_client.clone();
 
         let fut = self.service.call(req);
         Box::pin(async move {
@@ -142,38 +138,40 @@ where
             let player_email = auth_header.get(0).invalid_auth()?;
             let player_token = auth_header.get(1).invalid_auth()?;
 
-            println!("id: {}, token: {}", player_email, player_token);
-
-            // TODO: put together validation, replace player_email with email to be able to perform proper validation, and require beta bool so then we know which server to validate against
+            println!("email: {}, token: {}", player_email, player_token);
 
             let config = crate::config::Config::new();
-            // just a little reminder here for what URLs to be used when later implementing reqwest
-            // config.game_saves_dev_api;
-            // config.game_saves_prod_api;
 
+            // retrieve the distibution channel from the header
             let distribution_header = distribution_header.invalid_header()?;
             let distribution_header = distribution_header.to_str().invalid_header()?;
 
-            // use reqwest to make a post to either the dev or prod api depending on the route or header
-            // if the route is /beta/userdata or the header X-Distribution-Channel is "Beta" then set string url to dev api
-            // if the route is /userdata or the header X-Distribution-Channel doesn't exist then set string url to prod api
-            let url = if path == "/beta/userdata" || distribution_header == "Beta" {
+            // check which game save API to use based on the distribution channel
+            let url = if distribution_header == "Beta" {
                 config.game_saves_dev_api
             } else {
                 config.game_saves_prod_api
             };
 
-            println!(
-                "path: {}, header: {}, url: {}",
-                path, distribution_header, url
-            );
+            println!("header: {}, url: {}", distribution_header, url);
 
-            // let mut response = reqwest::Client::new()
-            //     .post(&config.game_saves_dev_api)
-            //     .body(format!("{}", player_email))
-            //     .send()
-            //     .await
-            //     .invalid_auth()?;
+            let response = http_client
+                .post(url)
+                .json(&GameSavesMetadataPostRequest {
+                    action: "getmetadata".to_owned(),
+                    username: (*player_email).to_owned(),
+                    token: (*player_token).to_owned(),
+                })
+                .send()
+                .await
+                .invalid_auth()?;
+
+            let json_response = response
+                .json::<GameSavesMetadataResponse>()
+                .await
+                .invalid_auth()?;
+
+            println!("response: {:?}", json_response);
 
             let res = fut.await?;
 

@@ -66,22 +66,22 @@ pub struct MessageResponse {
 }
 
 /// response structure for game saves metadata
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct GameSavesMetadataResponse {
     #[serde(rename = "responseType")]
     pub response_type: Option<String>,
     pub url: Option<String>,
     pub error: Option<String>,
     #[serde(rename = "fileSize")]
-    pub file_size: Option<i64>,
+    pub file_size: Option<u32>,
     #[serde(rename = "dateUpdated")]
-    pub date_updated: Option<i64>,
+    pub date_updated: Option<f64>,
     #[serde(rename = "playTime")]
-    pub play_time: Option<i64>,
+    pub play_time: Option<f64>,
 }
 
 /// request structure for retrieving game saves metadata
-#[derive(Deserialize)]
+#[derive(Serialize)]
 pub struct GameSavesMetadataPostRequest {
     /// should *always* be "getmetadata"
     pub action: String,
