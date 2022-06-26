@@ -35,11 +35,11 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/v2/userdata")
                     .wrap(middleware::UserDataAuthorization {})
-                    // .service(
-                    //     web::resource("")
-                    //         .guard(guard::Header("content-type", "application/json"))
-                    //         .route(web::patch().to(update_user)),
-                    // )
+                    .service(
+                        web::scope("")
+                            .guard(guard::Header("content-type", "application/json"))
+                            .route("", web::patch().to(update_user)),
+                    )
                     .service(delete_user)
                     .service(create_user),
             )
