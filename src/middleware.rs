@@ -8,45 +8,10 @@ use actix_web::{
     Error,
 };
 
-use crate::models::{GameSavesMetadataPostRequest, GameSavesMetadataResponse};
-
-trait InvalidItems<T> {
-    fn invalid_auth(self) -> Result<T, Error>;
-
-    fn invalid_header(self) -> Result<T, Error>;
-}
-
-impl<T> InvalidItems<T> for Option<T> {
-    fn invalid_auth(self) -> Result<T, Error> {
-        self.ok_or(Error::from(actix_web::error::ErrorBadRequest(
-            "Invalid authorization header",
-        )))
-    }
-
-    fn invalid_header(self) -> Result<T, Error> {
-        self.ok_or(Error::from(actix_web::error::ErrorBadRequest(
-            "Invalid header",
-        )))
-    }
-}
-
-impl<T, E: core::fmt::Debug> InvalidItems<T> for Result<T, E> {
-    fn invalid_auth(self) -> Result<T, Error> {
-        self.or_else(|_| {
-            Err(Error::from(actix_web::error::ErrorBadRequest(
-                "Invalid authorization header",
-            )))
-        })
-    }
-
-    fn invalid_header(self) -> Result<T, Error> {
-        self.or_else(|_| {
-            Err(Error::from(actix_web::error::ErrorBadRequest(
-                "Invalid header",
-            )))
-        })
-    }
-}
+use crate::{
+    models::{GameSavesMetadataPostRequest, GameSavesMetadataResponse},
+    utilities::InvalidItems,
+};
 
 type LocalBoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 

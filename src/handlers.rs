@@ -195,7 +195,6 @@ pub async fn update_user(
 
     let mut user_token = Hmac::new(Sha1::new(), config.userdata_auth.as_bytes());
     // user_token.input(query.player_id.as_bytes());
-    // TODO: create a helper function to simplify the process of using the authorization docoding.
     // user_token.input(user_data.player_token.as_bytes());
 
     let user_token = user_token

@@ -6,6 +6,7 @@ mod handlers;
 pub mod middleware;
 pub mod models;
 pub mod role_handling;
+pub mod utilities;
 pub mod webhook_logging;
 
 use actix_web::{

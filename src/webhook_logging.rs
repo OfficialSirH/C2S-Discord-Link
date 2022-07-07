@@ -17,16 +17,19 @@ pub async fn webhook_log(content: String, log_type: LOG) {
     };
 
     let formatted_content = format!(
-      "```ansi\n{}{}```",
-      BACKGROUND,
-      content.split(' ').map(|word| { format!("{}{}", color, word) }).collect::<Vec<String>>().join(" ")
+        "```ansi\n{}{}```",
+        BACKGROUND,
+        content
+            .split(' ')
+            .map(|word| { format!("{}{}", color, word) })
+            .collect::<Vec<String>>()
+            .join(" ")
     );
 
     let pre_webhook_execution = match client
         .execute_webhook(webhook_id, &config.webhook_token)
-        .content(
-            &*formatted_content,
-        ) {
+        .content(&*formatted_content)
+    {
         Ok(value) => value,
         Err(err) => {
             return eprintln!("{:?}", err);
