@@ -10,7 +10,7 @@ use actix_web::{
 
 use crate::{
     models::{GameSavesMetadataPostRequest, GameSavesMetadataResponse},
-    utilities::InvalidItems,
+    utilities::{safe_basic_auth_decoder, InvalidItems},
 };
 
 type LocalBoxFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
@@ -78,32 +78,7 @@ where
             let auth_header = auth_header.invalid_auth()?;
             let auth_header = auth_header.to_str().invalid_auth()?;
 
-            // split auth header from "Basic {auth}"
-            let auth_header = auth_header.split_whitespace().collect::<Vec<_>>();
-
-            // check if auth header is "Basic"
-            if *auth_header.get(0).invalid_auth()? != "Basic" {
-                return Err(Error::from(actix_web::error::ErrorBadRequest(
-                    "Invalid authorization header",
-                )));
-            }
-
-            // obtain the base64 string from the header
-            let auth_header = auth_header.get(1).invalid_auth()?;
-            // decode base64 from the string
-            let auth_header = base64::decode(auth_header).invalid_auth()?;
-
-            // convert the bytes to a string
-            let auth_header = String::from_utf8(auth_header).invalid_auth()?;
-
-            println!("testing basic auth header decoding: {}", auth_header);
-
-            // get the username and password from the email:player_token
-            let auth_header = auth_header.split(":").collect::<Vec<_>>();
-            let player_email = auth_header.get(0).invalid_auth()?;
-            let player_token = auth_header.get(1).invalid_auth()?;
-
-            println!("email: {}, token: {}", player_email, player_token);
+            let auth_header_data = safe_basic_auth_decoder(auth_header)?;
 
             let config = crate::config::Config::new();
 
@@ -124,8 +99,8 @@ where
                 .post(url)
                 .json(&GameSavesMetadataPostRequest {
                     action: "getmetadata".to_owned(),
-                    username: (*player_email).to_owned(),
-                    token: (*player_token).to_owned(),
+                    username: auth_header_data.email,
+                    token: auth_header_data.token,
                 })
                 .send()
                 .await

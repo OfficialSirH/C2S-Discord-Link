@@ -3,6 +3,7 @@ pub mod constants;
 pub mod db;
 pub mod errors;
 mod handlers;
+pub mod headers;
 pub mod middleware;
 pub mod models;
 pub mod role_handling;
@@ -32,6 +33,7 @@ async fn main() -> std::io::Result<()> {
     let server = HttpServer::new(move || {
         App::new()
             .app_data(Data::new(pool.clone()))
+            .app_data(Data::new(crate::config::Config::new()))
             .service(web::scope("/userdata").service(og_update_user))
             .service(
                 web::scope("/v2/userdata")
