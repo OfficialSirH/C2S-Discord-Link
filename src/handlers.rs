@@ -3,7 +3,7 @@ use crate::{
     db,
     errors::MyError,
     headers::{Authorization, DistributionChannel},
-    models::{MessageResponse, OGUpdateUserData, UpdateUserData},
+    models::{CreateUserData, MessageResponse, OGUpdateUserData, UpdateUserData},
     role_handling::handle_roles,
     utilities::encode_user_token,
     webhook_logging::webhook_log,
@@ -232,11 +232,23 @@ pub async fn update_user(
 #[post("")]
 pub async fn create_user(
     auth_header: web::Header<Authorization>,
-    received_user: Option<web::Json<UpdateUserData>>,
+    distribution_channel: Option<web::Header<DistributionChannel>>,
+    received_user: web::Json<CreateUserData>,
     db_pool: web::Data<Pool>,
     config: web::Data<crate::config::Config>,
 ) -> Result<HttpResponse, MyError> {
-    // let _user_data = received_user.into_inner();
+    let user_data = received_user.into_inner();
+    let is_default_userdata = user_data.data.is_none();
+    let inner_data = match user_data.data {
+        Some(user) => user,
+        None => UpdateUserData::default(),
+    };
+
+    let distribution_channel = match distribution_channel {
+        Some(channel) => channel.into_inner(),
+        None => DistributionChannel("".to_string()),
+    };
+    let auth_header = auth_header.into_inner();
 
     println!("create user function");
 
@@ -255,20 +267,76 @@ pub async fn create_user(
         &config.userdata_auth,
     );
 
-    db::get_userdata(&client, &user_token)
+    let user_exists = db::get_userdata(&client, &user_token)
         .await
         .make_response(MyError::InternalError(
             "Failed at retrieving existing data, you may not have your account linked yet",
         ))
-        .make_log(ErrorLogType::USER(user_token.to_owned()))
-        .await?;
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await;
+    if user_exists.is_ok() {
+        return Err(MyError::InternalError(
+            "User already exists, please use the update endpoint",
+        ));
+    }
 
-    Ok(HttpResponse::Ok().json(MessageResponse {
-        message: "The request was successful (WIP POST route)".to_owned(),
-    }))
+    let created_data = db::create_userdata(
+        &client,
+        &user_token,
+        &user_data.discord_id,
+        &(distribution_channel.0 == "Beta"),
+        inner_data,
+    )
+    .await
+    .make_response(MyError::InternalError(
+        "The request has unfortunately failed the update",
+    ))
+    .make_log(ErrorLogType::USER(user_token.to_string()))
+    .await?;
 
-    // webhook_log(logged_roles, LOG::INFORMATIONAL).await;
-    // Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
+    return if is_default_userdata {
+        let gained_roles = handle_roles(&created_data, config.discord_token.clone())
+            .await
+            .make_response(MyError::InternalError(
+                "The role-handling process has failed",
+            ))
+            .make_log(ErrorLogType::USER(user_token))
+            .await?;
+        let roles = if gained_roles.join(", ").is_empty() {
+            "The request was successful, but you've already gained all of the possible roles with your current progress".to_string()
+        } else {
+            format!(
+                "The request was successful, you've gained the following roles: {}",
+                gained_roles.join(", ")
+            )
+        };
+
+        let logged_roles = if gained_roles.join(", ").is_empty() {
+            format!(
+                "user with ID {} had a successful request but gained no roles",
+                created_data.discord_id
+            )
+        } else {
+            format!(
+                "user with ID {} gained the following roles: {}",
+                created_data.discord_id,
+                gained_roles.join(", ")
+            )
+        };
+
+        webhook_log(logged_roles, LOG::INFORMATIONAL).await;
+        Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
+    } else {
+        webhook_log(
+            format!(
+                "created userdata for user of id '{}'",
+                created_data.discord_id
+            ),
+            LOG::SUCCESSFUL,
+        )
+        .await;
+        Ok(HttpResponse::Ok().json(created_data))
+    };
 }
 
 #[delete("")]
@@ -292,18 +360,13 @@ pub async fn delete_user(
         &config.userdata_auth,
     );
 
-    db::get_userdata(&client, &user_token)
+    db::get_userdata(&client, &user_token) // TODO: replace with delete_userdata once it's implemented
         .await
         .make_response(MyError::InternalError(
-            "Failed at retrieving existing data, you may not have your account linked yet",
+            "Failed at deleting userdata, this token may not be valid",
         ))
         .make_log(ErrorLogType::USER(user_token.to_string()))
         .await?;
 
-    Ok(HttpResponse::Ok().json(MessageResponse {
-        message: "The request was successful (WIP DELETE route)".to_owned(),
-    }))
-
-    // webhook_log(logged_roles, LOG::INFORMATIONAL).await;
-    // Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
+    Ok(HttpResponse::NoContent().finish())
 }

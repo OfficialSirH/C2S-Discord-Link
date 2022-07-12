@@ -44,6 +44,26 @@ pub struct UpdateUserData {
     pub all_hidden_achievements_obtained: bool,
 }
 
+#[derive(Deserialize)]
+pub struct CreateUserData {
+    pub discord_id: String,
+    pub data: Option<UpdateUserData>,
+}
+
+impl Default for UpdateUserData {
+    fn default() -> Self {
+        UpdateUserData {
+            metabits: 0.0,
+            dino_rank: 0,
+            prestige_rank: 0,
+            beyond_rank: 0,
+            singularity_speedrun_time: None,
+            all_sharks_obtained: false,
+            all_hidden_achievements_obtained: false,
+        }
+    }
+}
+
 impl From<OGUpdateUserData> for UpdateUserData {
     fn from(data: OGUpdateUserData) -> Self {
         UpdateUserData {
