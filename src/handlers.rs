@@ -229,7 +229,6 @@ pub async fn update_user(
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
-#[post("")]
 pub async fn create_user(
     auth_header: web::Header<Authorization>,
     distribution_channel: Option<web::Header<DistributionChannel>>,

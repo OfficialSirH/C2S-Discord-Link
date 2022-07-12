@@ -41,10 +41,10 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         web::scope("")
                             .guard(guard::Header("content-type", "application/json"))
+                            .route("", web::post().to(create_user))
                             .route("", web::patch().to(update_user)),
                     )
-                    .service(delete_user)
-                    .service(create_user),
+                    .service(delete_user),
             )
     })
     .bind(config.server_addr.clone())?

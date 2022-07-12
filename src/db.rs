@@ -31,8 +31,8 @@ pub async fn create_userdata(
             &stmt,
             &[
                 &token,
-                beta_branch,
                 &discord_id,
+                beta_branch,
                 &(user_data.metabits as i64),
                 &user_data.dino_rank,
                 &user_data.prestige_rank,
@@ -81,7 +81,7 @@ pub async fn update_userdata(
 }
 
 pub async fn delete_userdata(client: &Client, token: &str) -> Result<UserData, Error> {
-    let _stmt = include_str!("../sql/update_userdata.sql");
+    let _stmt = include_str!("../sql/delete_userdata.sql");
     let _stmt = _stmt.replace("$token", format!("'{}'", &token).as_str());
     let stmt = client.prepare(&_stmt).await?;
 
