@@ -65,3 +65,6 @@ impl Header for Authorization {
         })
     }
 }
+
+// TODO: I guess implement a header for parsing "x-secret-key" header just for create route?
+// note: may be better to receive a temporary discord token from a user via OAuth2 to confirm it's their account they're linking
