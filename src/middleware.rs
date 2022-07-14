@@ -93,8 +93,6 @@ where
                 config.game_saves_prod_api
             };
 
-            println!("header: {}, url: {}", distribution_header, url);
-
             let response = http_client
                 .post(url)
                 .json(&GameSavesMetadataPostRequest {

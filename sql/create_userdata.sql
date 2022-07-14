@@ -5,6 +5,7 @@ INSERT INTO "UserData" (
     "metabits",
     "dino_rank",
     "prestige_rank",
+    "beyond_rank",
     "singularity_speedrun_time",
     "all_sharks_obtained",
     "all_hidden_achievements_obtained",
@@ -20,7 +21,8 @@ VALUES (
     $7,
     $8,
     $9,
-    $10
+    $10,
+    $11
   ) ON CONFLICT ("discord_id") DO
 UPDATE
 SET "token" = $1,
@@ -28,9 +30,10 @@ SET "token" = $1,
   "metabits" = $4,
   "dino_rank" = $5,
   "prestige_rank" = $6,
-  "singularity_speedrun_time" = $7,
-  "all_sharks_obtained" = $8,
-  "all_hidden_achievements_obtained" = $9,
-  "edited_timestamp" = $10
-WHERE "UserData"."discord_id" = $2;
+  "beyond_rank" = $7,
+  "singularity_speedrun_time" = $8,
+  "all_sharks_obtained" = $9,
+  "all_hidden_achievements_obtained" = $10,
+  "edited_timestamp" = $11
+WHERE "UserData"."discord_id" = $2
 RETURNING *;

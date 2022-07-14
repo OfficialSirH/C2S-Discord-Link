@@ -249,8 +249,6 @@ pub async fn create_user(
     };
     let auth_header = auth_header.into_inner();
 
-    println!("create user function");
-
     let client: Client = db_pool
         .get()
         .await
@@ -268,14 +266,12 @@ pub async fn create_user(
 
     let user_exists = db::get_userdata(&client, &user_token)
         .await
-        .make_response(MyError::InternalError(
-            "Failed at retrieving existing data, you may not have your account linked yet",
-        ))
+        .make_response(MyError::NotFound)
         .make_log(ErrorLogType::USER(user_token.to_string()))
         .await;
     if user_exists.is_ok() {
         return Err(MyError::InternalError(
-            "User already exists, please use the update endpoint",
+            "You're already linked, please use the update endpoint",
         ));
     }
 
@@ -288,7 +284,7 @@ pub async fn create_user(
     )
     .await
     .make_response(MyError::InternalError(
-        "The request has unfortunately failed the update",
+        "The request has unfortunately failed at creating your account",
     ))
     .make_log(ErrorLogType::USER(user_token.to_string()))
     .await?;
