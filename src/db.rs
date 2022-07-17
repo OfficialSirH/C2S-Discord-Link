@@ -16,6 +16,19 @@ pub async fn get_userdata(client: &Client, token: &str) -> Result<UserData, Erro
     UserData::from_row_ref(&queried_data)
 }
 
+pub async fn get_userdata_by_id(client: &Client, discord_id: &str) -> Result<UserData, Error> {
+    let _stmt = include_str!("../sql/get_userdata_by_id.sql");
+    let stmt = client.prepare(&_stmt).await?;
+
+    let queried_data = client
+        .query(&stmt, &[&discord_id])
+        .await?
+        .pop()
+        .ok_or(Error::ColumnNotFound)?;
+
+    UserData::from_row_ref(&queried_data)
+}
+
 pub async fn create_userdata(
     client: &Client,
     token: &str,

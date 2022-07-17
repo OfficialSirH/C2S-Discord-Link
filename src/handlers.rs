@@ -229,6 +229,7 @@ pub async fn update_user(
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
+// TODO: implement a more secured way of making sure the discord ID is coming from the owner of said discord account
 pub async fn create_user(
     auth_header: web::Header<Authorization>,
     distribution_channel: Option<web::Header<DistributionChannel>>,
@@ -270,8 +271,24 @@ pub async fn create_user(
         .make_log(ErrorLogType::USER(user_token.to_string()))
         .await;
     if user_exists.is_ok() {
+        if user_data.discord_id != user_exists?.discord_id {
+            return Err(MyError::BadRequest(
+                "This account is already bound to another discord id",
+            ));
+        }
         return Err(MyError::InternalError(
             "You're already linked, please use the update endpoint",
+        ));
+    }
+
+    let account_exists_with_id = db::get_userdata_by_id(&client, &user_data.discord_id)
+        .await
+        .make_response(MyError::NotFound)
+        .make_log(ErrorLogType::USER(user_token.to_string()))
+        .await;
+    if account_exists_with_id.is_ok() {
+        return Err(MyError::BadRequest(
+            "This discord id is already bound to another account",
         ));
     }
 
