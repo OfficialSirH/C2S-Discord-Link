@@ -1,0 +1,6 @@
+services:
+  api:
+    build: .
+    container_name: discordlink
+    stdin_open: true
+    tty: true
