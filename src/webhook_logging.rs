@@ -5,6 +5,8 @@ use crate::{
 use twilight_http::Client;
 use twilight_model::id::{marker::WebhookMarker, Id};
 
+#[allow(unused_must_use)]
+
 pub async fn webhook_log(content: String, log_type: LOG) {
     let config = Config::new();
     let client = Client::new(config.discord_token);
@@ -28,7 +30,7 @@ pub async fn webhook_log(content: String, log_type: LOG) {
 
     let pre_webhook_execution = match client
         .execute_webhook(webhook_id, &config.webhook_token)
-        .content(&*formatted_content)
+        .content(formatted_content.as_str())
     {
         Ok(value) => value,
         Err(err) => {
@@ -36,12 +38,10 @@ pub async fn webhook_log(content: String, log_type: LOG) {
         }
     };
 
-    match pre_webhook_execution.exec().await {
-        Ok(value) => value,
-        Err(error) => {
-            return eprintln!("{:?}", error);
-        }
-    };
+    pre_webhook_execution
+        .exec()
+        .await
+        .inspect_err(|error| eprintln!("{:?}", error));
 }
 
 #[tokio::test]

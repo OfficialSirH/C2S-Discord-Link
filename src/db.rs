@@ -18,7 +18,7 @@ pub async fn get_userdata(client: &Client, token: &str) -> Result<UserData, Erro
 
 pub async fn get_userdata_by_id(client: &Client, discord_id: &str) -> Result<UserData, Error> {
     let _stmt = include_str!("../sql/get_userdata_by_id.sql");
-    let stmt = client.prepare(&_stmt).await?;
+    let stmt = client.prepare(_stmt).await?;
 
     let queried_data = client
         .query(&stmt, &[&discord_id])
@@ -37,7 +37,7 @@ pub async fn create_userdata(
     user_data: UpdateUserData,
 ) -> Result<UserData, Error> {
     let _stmt = include_str!("../sql/create_userdata.sql");
-    let stmt = client.prepare(&_stmt).await?;
+    let stmt = client.prepare(_stmt).await?;
 
     let queried_data = client
         .query(

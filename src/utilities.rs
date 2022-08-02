@@ -9,33 +9,21 @@ pub trait InvalidItems<T> {
 
 impl<T> InvalidItems<T> for Option<T> {
     fn invalid_auth(self) -> Result<T, Error> {
-        self.ok_or(Error::from(actix_web::error::ErrorBadRequest(
-            "Invalid authorization header",
-        )))
+        self.ok_or_else(|| actix_web::error::ErrorBadRequest("Invalid authorization header"))
     }
 
     fn invalid_header(self) -> Result<T, Error> {
-        self.ok_or(Error::from(actix_web::error::ErrorBadRequest(
-            "Invalid header",
-        )))
+        self.ok_or_else(|| actix_web::error::ErrorBadRequest("Invalid header"))
     }
 }
 
 impl<T, E: core::fmt::Debug> InvalidItems<T> for Result<T, E> {
     fn invalid_auth(self) -> Result<T, Error> {
-        self.or_else(|_| {
-            Err(Error::from(actix_web::error::ErrorBadRequest(
-                "Invalid authorization header",
-            )))
-        })
+        self.map_err(|_| actix_web::error::ErrorBadRequest("Invalid authorization header"))
     }
 
     fn invalid_header(self) -> Result<T, Error> {
-        self.or_else(|_| {
-            Err(Error::from(actix_web::error::ErrorBadRequest(
-                "Invalid header",
-            )))
-        })
+        self.map_err(|_| actix_web::error::ErrorBadRequest("Invalid header"))
     }
 }
 
@@ -53,10 +41,10 @@ pub fn safe_basic_auth_decoder(auth_header: &str) -> Result<AuthData, Error> {
     let auth_header = auth_header.split_whitespace().collect::<Vec<_>>();
 
     // check if auth header is "Basic"
-    if *auth_header.get(0).invalid_auth()? != "Basic" {
-        return Err(Error::from(actix_web::error::ErrorBadRequest(
+    if *auth_header.first().invalid_auth()? != "Basic" {
+        return Err(actix_web::error::ErrorBadRequest(
             "Invalid authorization header",
-        )));
+        ));
     }
 
     // obtain the base64 string from the header
@@ -68,8 +56,8 @@ pub fn safe_basic_auth_decoder(auth_header: &str) -> Result<AuthData, Error> {
     let auth_header = String::from_utf8(auth_header).invalid_auth()?;
 
     // get the username and password from the email:player_token
-    let auth_header = auth_header.split(":").collect::<Vec<_>>();
-    let player_email = auth_header.get(0).invalid_auth()?;
+    let auth_header = auth_header.split(':').collect::<Vec<_>>();
+    let player_email = auth_header.first().invalid_auth()?;
     let player_token = auth_header.get(1).invalid_auth()?;
 
     Ok(AuthData {
@@ -80,8 +68,7 @@ pub fn safe_basic_auth_decoder(auth_header: &str) -> Result<AuthData, Error> {
 
 impl From<&str> for AuthData {
     fn from(auth_header: &str) -> Self {
-        let auth_header = safe_basic_auth_decoder(auth_header).unwrap();
-        auth_header
+        safe_basic_auth_decoder(auth_header).unwrap()
     }
 }
 

@@ -114,14 +114,10 @@ where
             // check if json_response.error is Some and equals "Token expired"
             if let Some(error) = json_response.error {
                 if error == "Token expired" {
-                    return Err(Error::from(actix_web::error::ErrorUnauthorized(
-                        "Token expired",
-                    )));
+                    return Err(actix_web::error::ErrorUnauthorized("Token expired"));
                 }
             } else if json_response.response_type.is_none() {
-                return Err(Error::from(actix_web::error::ErrorUnauthorized(
-                    "Invalid credentials",
-                )));
+                return Err(actix_web::error::ErrorUnauthorized("Invalid credentials"));
             }
 
             let res = fut.await?;
