@@ -1,4 +1,7 @@
-use actix_web::{HttpResponse, ResponseError, http::{StatusCode, header}, HttpResponseBuilder};
+use actix_web::{
+    http::{header, StatusCode},
+    HttpResponse, HttpResponseBuilder, ResponseError,
+};
 use deadpool_postgres::PoolError;
 use derive_more::Display;
 use tokio_pg_mapper::Error as PGMError;
@@ -26,7 +29,7 @@ impl ResponseError for MyError {
         HttpResponseBuilder::new(self.status_code())
             .insert_header(header::ContentType::json())
             .json(MessageResponse {
-                message: self.to_string()
+                message: self.to_string(),
             })
     }
 
@@ -34,7 +37,7 @@ impl ResponseError for MyError {
         match *self {
             MyError::BadRequest(_) => StatusCode::BAD_REQUEST,
             MyError::Timeout(_) => StatusCode::GATEWAY_TIMEOUT,
-            _ => StatusCode::INTERNAL_SERVER_ERROR
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
 }

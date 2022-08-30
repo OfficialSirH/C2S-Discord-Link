@@ -1,14 +1,13 @@
 use crate::errors::MyError;
-use crate::config::Config;
 use crate::models::UserData;
 use crate::constants::{roles, persistent_roles, C2SGUILD, MetabitRequirements, PaleoRequirements, SimulationRequirements, BeyondRequirements};
 use twilight_http::Client;
 use twilight_model::id::marker::{GuildMarker, UserMarker, RoleMarker};
 use twilight_model::{id::Id,guild::Member};
 
-pub async fn handle_roles(user_data: &UserData, config: Config) -> Result<Vec<&'static str>, MyError> {
+pub async fn handle_roles(user_data: &UserData, discord_token: String) -> Result<Vec<&'static str>, MyError> {
   let mut gained_roles: Vec<&'static str> = Vec::new();
-  let client = Client::new(config.discord_token);
+  let client = Client::new(discord_token);
   let guild_id = Id::<GuildMarker>::new(C2SGUILD);
   let user_id = Id::<UserMarker>::new(match str::parse::<u64>(&user_data.discord_id) {
     Ok(value) => value,

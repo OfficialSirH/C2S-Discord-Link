@@ -1,20 +1,31 @@
-mod handlers;
+#![feature(result_option_inspect)]
+
 pub mod config;
-pub mod role_handling;
 pub mod constants;
-pub mod models;
-pub mod errors;
 pub mod db;
+pub mod errors;
+mod handlers;
+pub mod headers;
+pub mod middleware;
+pub mod models;
+pub mod role_handling;
+pub mod utilities;
 pub mod webhook_logging;
 
-use actix_web::{web::{self, Data}, App, HttpServer};
+use actix_web::{
+    guard, main,
+    web::{self, Data},
+    App, HttpServer,
+};
 use deadpool_postgres::Runtime;
 use dotenv::dotenv;
-use handlers::update_user;
-use webhook_logging::webhook_log;
+use handlers::og_update_user;
 use tokio_postgres::NoTls;
+use webhook_logging::webhook_log;
 
-#[actix_web::main]
+use crate::handlers::{create_user, delete_user, update_user};
+
+#[main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
@@ -24,11 +35,27 @@ async fn main() -> std::io::Result<()> {
     let server = HttpServer::new(move || {
         App::new()
             .app_data(Data::new(pool.clone()))
-            .service(web::resource("/userdata").route(web::post().to(update_user)))
+            .app_data(Data::new(crate::config::Config::new()))
+            .service(web::scope("/userdata").service(og_update_user))
+            .service(
+                web::scope("/v2/userdata")
+                    .wrap(middleware::UserDataAuthorization {})
+                    .service(
+                        web::scope("")
+                            .guard(guard::Header("content-type", "application/json"))
+                            .route("", web::post().to(create_user))
+                            .route("", web::patch().to(update_user)),
+                    )
+                    .service(delete_user),
+            )
     })
     .bind(config.server_addr.clone())?
     .run();
-    webhook_log(format!("Server running at http://{}/", config.server_addr), constants::LOG::SUCCESSFUL).await;
+    webhook_log(
+        format!("Server running at http://{}/", config.server_addr),
+        constants::LOG::SUCCESSFUL,
+    )
+    .await;
     println!("Server running at http://{}/", config.server_addr);
 
     server.await
