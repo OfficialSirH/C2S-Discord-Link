@@ -18,6 +18,27 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: create env file
+        run: |
+          touch .env
+          echo DISCORD_TOKEN=${{ secrets.DISCORD_TOKEN }} >> .env
+
+          echo WEBHOOK_ID=${{ secrets.WEBHOOK_ID }} >> .env
+          echo WEBHOOK_TOKEN=${{ secrets.WEBHOOK_TOKEN }} >> .env
+
+          echo USERDATA_AUTH=${{ secrets.USERDATA_AUTH }} >> .env
+          echo SERVER_ADDR="api:3000" >> .env
+
+          echo GAME_SAVES_DEV_API=${{ secrets.GAME_SAVES_DEV_API }} >> .env
+          echo GAME_SAVES_PROD_API=${{ secrets.GAME_SAVES_PROD_API }} >> .env
+
+          echo DBUSER=${{ secrets.DBUSER }} >> .env
+          echo PASSWORD=${{ secrets.PASSWORD }} >> .env
+          echo HOST=${{ secrets.HOST }} >> .env
+          echo PORT=5432 >> .env
+          echo DBNAME=${{ secrets.DBNAME }} >> .env
+          echo POOL_MAX_SIZE=16 >> .env
+          cat .env
       - name: Build and push
         uses: docker/build-push-action@v3
         with:
