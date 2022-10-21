@@ -8,7 +8,7 @@ use crate::{
     utilities::encode_user_token,
     webhook_logging::webhook_log,
 };
-use actix_web::{delete, post, web, HttpRequest, HttpResponse};
+use actix_web::{delete, post, web, HttpRequest, HttpResponse, patch};
 use async_trait::async_trait;
 use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
@@ -48,7 +48,7 @@ impl<T: std::marker::Send> LogMyError<T> for Result<T, MyError> {
                     ErrorLogType::INTERNAL => error.to_string(),
                 };
                 webhook_log(error_content, LOG::FAILURE).await;
-                return Err(error);
+                Err(error)
             }
         }
     }
@@ -147,6 +147,7 @@ pub async fn og_update_user(
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
+#[patch("")]
 pub async fn update_user(
     auth_header: web::Header<Authorization>,
     distribution_channel: web::Header<DistributionChannel>,
@@ -227,7 +228,7 @@ pub async fn update_user(
     Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
-// TODO: implement a more secured way of making sure the discord ID is coming from the owner of said discord account
+#[post("")]
 pub async fn create_user(
     req: HttpRequest,
     auth_header: web::Header<Authorization>,
@@ -236,18 +237,20 @@ pub async fn create_user(
     db_pool: web::Data<Pool>,
     config: web::Data<crate::config::Config>,
 ) -> Result<HttpResponse, MyError> {
-    // may later replace this snippet with some other way of allowing users to create linked data
+    // note: may later replace this snippet with some other way of allowing users to create linked data
     let semblance_access = req.headers().get("X-Semblance-Exclusive");
     if semblance_access.is_none() {
         return Ok(HttpResponse::Forbidden().json(MessageResponse {
             message: "You are not allowed to create a user".to_owned(),
         }));
     }
-    let semblance_access = semblance_access.unwrap();
-    let semblance_key: String;
-    match semblance_access.to_str() {
+    match semblance_access.unwrap().to_str() {
         Ok(value) => {
-            semblance_key = value.to_owned();
+            if value.to_owned() != config.userdata_auth {
+                return Ok(HttpResponse::Forbidden().json(MessageResponse {
+                    message: "You are not allowed to create a user".to_owned(),
+                }));
+            }
         }
         Err(_) => {
             return Ok(HttpResponse::Forbidden().json(MessageResponse {
@@ -255,11 +258,6 @@ pub async fn create_user(
             }))
         }
     };
-    if semblance_key != config.userdata_auth {
-        return Ok(HttpResponse::Forbidden().json(MessageResponse {
-            message: "You are not allowed to create a user".to_owned(),
-        }));
-    }
     // end of code that may later be replaced with some other way of allowing users to create linked data
 
     let user_data = received_user.into_inner();
@@ -306,16 +304,17 @@ pub async fn create_user(
         ));
     }
 
-    let account_exists_with_id = db::get_userdata_by_id(&client, &user_data.discord_id)
-        .await
-        .make_response(MyError::NotFound)
-        .make_log(ErrorLogType::USER(user_token.to_owned()))
-        .await;
-    if account_exists_with_id.is_ok() {
-        return Err(MyError::BadRequest(
-            "This discord id is already bound to another account",
-        ));
-    }
+    // forgot why I had this here, but might remove it if it's completely unnecessary
+    // let account_exists_with_id = db::get_userdata_by_id(&client, &user_data.discord_id)
+    //     .await
+    //     .make_response(MyError::NotFound)
+    //     .make_log(ErrorLogType::USER(user_token.to_owned()))
+    //     .await;
+    // if account_exists_with_id.is_ok() {
+    //     return Err(MyError::BadRequest(
+    //         "This discord id is already bound to another account",
+    //     ));
+    // }
 
     let created_data = db::create_userdata(
         &client,
