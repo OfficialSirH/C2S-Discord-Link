@@ -8,7 +8,7 @@ use crate::{
     utilities::encode_user_token,
     webhook_logging::webhook_log,
 };
-use actix_web::{delete, post, web, HttpRequest, HttpResponse, patch};
+use actix_web::{delete, patch, post, web, HttpRequest, HttpResponse};
 use async_trait::async_trait;
 use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
@@ -331,38 +331,6 @@ pub async fn create_user(
     .await?;
 
     if is_default_userdata {
-        let gained_roles = handle_roles(&created_data, config.discord_token.clone())
-            .await
-            .make_response(MyError::InternalError(
-                "The role-handling process has failed",
-            ))
-            .make_log(ErrorLogType::USER(user_token))
-            .await?;
-        let roles = if gained_roles.join(", ").is_empty() {
-            "The request was successful, but you've already gained all of the possible roles with your current progress".to_owned()
-        } else {
-            format!(
-                "The request was successful, you've gained the following roles: {}",
-                gained_roles.join(", ")
-            )
-        };
-
-        let logged_roles = if gained_roles.join(", ").is_empty() {
-            format!(
-                "user with ID {} had a successful request but gained no roles",
-                created_data.discord_id
-            )
-        } else {
-            format!(
-                "user with ID {} gained the following roles: {}",
-                created_data.discord_id,
-                gained_roles.join(", ")
-            )
-        };
-
-        webhook_log(logged_roles, LOG::INFORMATIONAL).await;
-        Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
-    } else {
         webhook_log(
             format!(
                 "created userdata for user of id '{}'",
@@ -371,8 +339,40 @@ pub async fn create_user(
             LOG::SUCCESSFUL,
         )
         .await;
-        Ok(HttpResponse::Ok().json(created_data))
+        return Ok(HttpResponse::Ok().json(created_data));
     }
+
+    let gained_roles = handle_roles(&created_data, config.discord_token.clone())
+        .await
+        .make_response(MyError::InternalError(
+            "The role-handling process has failed",
+        ))
+        .make_log(ErrorLogType::USER(user_token))
+        .await?;
+    let roles = if gained_roles.join(", ").is_empty() {
+        "The request was successful, but you've already gained all of the possible roles with your current progress".to_owned()
+    } else {
+        format!(
+            "The request was successful, you've gained the following roles: {}",
+            gained_roles.join(", ")
+        )
+    };
+
+    let logged_roles = if gained_roles.join(", ").is_empty() {
+        format!(
+            "user with ID {} had a successful request but gained no roles",
+            created_data.discord_id
+        )
+    } else {
+        format!(
+            "user with ID {} gained the following roles: {}",
+            created_data.discord_id,
+            gained_roles.join(", ")
+        )
+    };
+
+    webhook_log(logged_roles, LOG::INFORMATIONAL).await;
+    Ok(HttpResponse::Ok().json(MessageResponse { message: roles }))
 }
 
 #[delete("")]
