@@ -2,12 +2,13 @@ use actix_web::{
     http::{header, StatusCode},
     HttpResponse, HttpResponseBuilder, ResponseError,
 };
+use async_trait::async_trait;
 use deadpool_postgres::PoolError;
 use derive_more::Display;
 use tokio_pg_mapper::Error as PGMError;
 use tokio_postgres::error::Error as PGError;
 
-use crate::models::MessageResponse;
+use crate::{models::MessageResponse, constants::{ErrorLogType, LOG}, webhook_logging::webhook_log};
 
 #[derive(Display, Debug)]
 pub enum MyError {
@@ -38,6 +39,61 @@ impl ResponseError for MyError {
             MyError::BadRequest(_) => StatusCode::BAD_REQUEST,
             MyError::Timeout(_) => StatusCode::GATEWAY_TIMEOUT,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
+        }
+    }
+}
+
+pub trait ConvertResultErrorToMyError<T> {
+    fn make_response(self, error_enum: MyError) -> Result<T, MyError>;
+}
+
+#[async_trait]
+pub trait LogMyError<T> {
+    async fn make_log(self, error_type: ErrorLogType) -> Result<T, MyError>;
+}
+
+pub trait InternalErrorConverter<T> {
+    fn make_internal_error(self, message: &'static str) -> Result<T, MyError>;
+}
+
+impl<T, E: std::fmt::Debug> ConvertResultErrorToMyError<T> for Result<T, E> {
+    fn make_response(self, error_enum: MyError) -> Result<T, MyError> {
+        match self {
+            Ok(data) => Ok(data),
+            Err(error) => {
+                println!("{:?}", error);
+                Err(error_enum)
+            }
+        }
+    }
+}
+
+#[async_trait]
+impl<T: std::marker::Send> LogMyError<T> for Result<T, MyError> {
+    async fn make_log(self, error_type: ErrorLogType) -> Result<T, MyError> {
+        match self {
+            Ok(value) => Ok(value),
+            Err(error) => {
+                let error_content = match error_type {
+                    ErrorLogType::USER(token) => {
+                        format!("Error with a user\n\ntoken: {}\n\n{}", token, error)
+                    }
+                    ErrorLogType::INTERNAL => error.to_string(),
+                };
+                webhook_log(error_content, LOG::FAILURE).await;
+                Err(error)
+            }
+        }
+    }
+}
+
+impl<T, E: std::fmt::Debug> InternalErrorConverter<T> for Result<T, E> {
+    fn make_internal_error(self, message: &'static str) -> Result<T, MyError> {
+        match self {
+            Ok(data) => Ok(data),
+            Err(_) => {
+                Err(MyError::InternalError(message))
+            }
         }
     }
 }

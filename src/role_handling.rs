@@ -1,4 +1,4 @@
-use crate::errors::MyError;
+use crate::errors::{MyError, InternalErrorConverter};
 use crate::models::UserData;
 use crate::constants::{roles, persistent_roles, C2SGUILD, MetabitRequirements, PaleoRequirements, SimulationRequirements, BeyondRequirements};
 use twilight_http::Client;
@@ -9,23 +9,12 @@ pub async fn handle_roles(user_data: &UserData, discord_token: String) -> Result
   let mut gained_roles: Vec<&'static str> = Vec::new();
   let client = Client::new(discord_token);
   let guild_id = Id::<GuildMarker>::new(C2SGUILD);
-  let user_id = Id::<UserMarker>::new(match str::parse::<u64>(&user_data.discord_id) {
-    Ok(value) => value,
-    Err(_) => return Err(MyError::InternalError("parsing discord id failed")),
-  });
+  let user_id = Id::<UserMarker>::new(str::parse::<u64>(&user_data.discord_id).make_internal_error("parsing discord id failed")?);
   
-  let member_data = match client
+  let member_data = client
     .guild_member(guild_id, user_id)
-    .exec().await {
-      Ok(value) => value,
-      Err(_) => 
-        return Err(MyError::InternalError("failed retrieving member data (this usually occurs when you're not in the Discord server)"))
-      ,
-    };
-  let member_data: Member = match member_data.model().await {
-    Ok(value) => value,
-    Err(_) => return Err(MyError::InternalError("failed at parsing the member data to a Member struct")),
-  };
+    .exec().await.make_internal_error("failed retrieving member data (this usually occurs when you're not in the Discord server)")?;
+  let member_data = member_data.model().await.make_internal_error("failed at parsing the member data to a Member struct")?;
 
   let mut gained_metabit_roles = handle_metabit_roles(&mut gained_roles, &member_data, user_data);
   let mut gained_paleo_roles = handle_paleo_roles(&mut gained_roles, &member_data, user_data);
@@ -43,19 +32,13 @@ pub async fn handle_roles(user_data: &UserData, discord_token: String) -> Result
   applyable_roles.append(&mut gained_beyond_roles);
   applyable_roles.append(&mut gained_simulation_roles);
   
-  let updated_member_data = match client.update_guild_member(guild_id, user_id)
+  let updated_member_data = client.update_guild_member(guild_id, user_id)
     .roles(applyable_roles.as_slice())
     .exec()
-    .await {
-      Ok(value) => value,
-      Err(_) => return Err(MyError::InternalError("failed at updating member roles")),
-    };
-  match updated_member_data
+    .await.make_internal_error("failed at updating member roles")?;
+  updated_member_data
   .model()
-  .await {
-    Ok(value) => value,
-    Err(_) => return Err(MyError::InternalError("failed at parsing member data model")),
-  };
+  .await.make_internal_error("failed at parsing member data model")?;
 
   Ok(gained_roles)
 }

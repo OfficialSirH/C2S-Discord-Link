@@ -1,7 +1,7 @@
 use crate::{
     constants::{ErrorLogType, LOG},
     db,
-    errors::MyError,
+    errors::{MyError, ConvertResultErrorToMyError, LogMyError},
     headers::{Authorization, DistributionChannel},
     models::{CreateUserData, MessageResponse, OGUpdateUserData, UpdateUserData},
     role_handling::handle_roles,
@@ -9,50 +9,9 @@ use crate::{
     webhook_logging::webhook_log,
 };
 use actix_web::{delete, patch, post, web, HttpRequest, HttpResponse};
-use async_trait::async_trait;
 use crypto::{hmac::Hmac, mac::Mac, sha1::Sha1};
 use deadpool_postgres::{Client, Pool};
 use serde::Deserialize;
-
-trait ConvertResultErrorToMyError<T> {
-    fn make_response(self, error_enum: MyError) -> Result<T, MyError>;
-}
-
-#[async_trait]
-trait LogMyError<T> {
-    async fn make_log(self, error_type: ErrorLogType) -> Result<T, MyError>;
-}
-
-impl<T, E: std::fmt::Debug> ConvertResultErrorToMyError<T> for Result<T, E> {
-    fn make_response(self, error_enum: MyError) -> Result<T, MyError> {
-        match self {
-            Ok(data) => Ok(data),
-            Err(error) => {
-                println!("{:?}", error);
-                Err(error_enum)
-            }
-        }
-    }
-}
-
-#[async_trait]
-impl<T: std::marker::Send> LogMyError<T> for Result<T, MyError> {
-    async fn make_log(self, error_type: ErrorLogType) -> Result<T, MyError> {
-        match self {
-            Ok(value) => Ok(value),
-            Err(error) => {
-                let error_content = match error_type {
-                    ErrorLogType::USER(token) => {
-                        format!("Error with a user\n\ntoken: {}\n\n{}", token, error)
-                    }
-                    ErrorLogType::INTERNAL => error.to_string(),
-                };
-                webhook_log(error_content, LOG::FAILURE).await;
-                Err(error)
-            }
-        }
-    }
-}
 
 #[derive(Deserialize)]
 pub struct PlayerData {
@@ -246,7 +205,7 @@ pub async fn create_user(
     }
     match semblance_access.unwrap().to_str() {
         Ok(value) => {
-            if value.to_owned() != config.userdata_auth {
+            if value != config.userdata_auth {
                 return Ok(HttpResponse::Forbidden().json(MessageResponse {
                     message: "You are not allowed to create a user".to_owned(),
                 }));
