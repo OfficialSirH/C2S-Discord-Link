@@ -1,7 +1,7 @@
 use crate::{
     constants::{ErrorLogType, LOG},
     db,
-    errors::{MyError, ConvertResultErrorToMyError, LogMyError},
+    errors::{ConvertResultErrorToMyError, LogMyError, MyError},
     headers::{Authorization, DistributionChannel},
     models::{CreateUserData, MessageResponse, OGUpdateUserData, UpdateUserData},
     role_handling::handle_roles,

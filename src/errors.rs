@@ -8,7 +8,11 @@ use derive_more::Display;
 use tokio_pg_mapper::Error as PGMError;
 use tokio_postgres::error::Error as PGError;
 
-use crate::{models::MessageResponse, constants::{ErrorLogType, LOG}, webhook_logging::webhook_log};
+use crate::{
+    constants::{ErrorLogType, LOG},
+    models::MessageResponse,
+    webhook_logging::webhook_log,
+};
 
 #[derive(Display, Debug)]
 pub enum MyError {
@@ -91,9 +95,7 @@ impl<T, E: std::fmt::Debug> InternalErrorConverter<T> for Result<T, E> {
     fn make_internal_error(self, message: &'static str) -> Result<T, MyError> {
         match self {
             Ok(data) => Ok(data),
-            Err(_) => {
-                Err(MyError::InternalError(message))
-            }
+            Err(_) => Err(MyError::InternalError(message)),
         }
     }
 }
